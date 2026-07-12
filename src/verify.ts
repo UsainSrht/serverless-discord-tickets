@@ -18,9 +18,20 @@ export async function verifyDiscordRequest(
     };
   }
 
+  const trimmedPublicKey = publicKey?.trim();
+  if (!trimmedPublicKey) {
+    return {
+      valid: false,
+      response: new Response(
+        'DISCORD_PUBLIC_KEY is not configured in Cloudflare Secrets',
+        { status: 500 },
+      ),
+    };
+  }
+
   const body = await request.text();
 
-  const isValid = verifyKey(body, signature, timestamp, publicKey);
+  const isValid = await verifyKey(body, signature, timestamp, trimmedPublicKey);
   if (!isValid) {
     return {
       valid: false,

@@ -40,13 +40,16 @@ export default {
       return new Response('Invalid JSON body', { status: 400 });
     }
 
+    // Discord endpoint verification sends a PING — respond immediately.
+    if (interaction.type === InteractionType.Ping) {
+      return pongResponse();
+    }
+
     const config = loadConfig(env);
     const handlerCtx = { env, config, interaction };
 
     try {
       switch (interaction.type) {
-        case InteractionType.Ping:
-          return pongResponse();
 
         case InteractionType.ApplicationCommand: {
           const commandName = interaction.data?.name;
