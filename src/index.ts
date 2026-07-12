@@ -6,7 +6,30 @@ import { handleCreateTicketModal, runTicketCreation } from './handlers/create-mo
 import { handleTicketCommand } from './handlers/command';
 import { messageResponse, pongResponse } from './responses';
 import { InteractionType, type APIInteraction } from './types';
-import { verifyDiscordRequest } from './verify';
+import { normalizePublicKey, verifyDiscordRequest } from './verify';
+
+function healthResponse(env: Env): Response {
+  const publicKey = normalizePublicKey(env.DISCORD_PUBLIC_KEY);
+
+  return new Response(
+    JSON.stringify({
+      status: 'running',
+      checks: {
+        discordPublicKeySet: publicKey.length > 0,
+        discordPublicKeyLength: publicKey.length,
+        discordPublicKeyValidFormat: /^[0-9a-fA-F]{64}$/.test(publicKey),
+        discordApplicationIdSet: Boolean(env.DISCORD_APPLICATION_ID?.trim()),
+        discordTokenSet: Boolean(env.DISCORD_TOKEN?.trim()),
+      },
+      hint:
+        'Discord verification needs discordPublicKeyValidFormat=true and a redeployed worker that rejects invalid signatures with HTTP 401.',
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+}
 
 export default {
   async fetch(
@@ -15,9 +38,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     if (request.method === 'GET') {
-      return new Response('serverless-discord-tickets is running.', {
-        status: 200,
-      });
+      return healthResponse(env);
     }
 
     if (request.method !== 'POST') {

@@ -1,5 +1,23 @@
 import { verifyKey } from 'discord-interactions';
 
+/** Normalize the Discord application public key from env/secret values. */
+export function normalizePublicKey(publicKey: string | undefined): string {
+  if (!publicKey) return '';
+
+  let normalized = publicKey.trim();
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+  if (normalized.startsWith('0x') || normalized.startsWith('0X')) {
+    normalized = normalized.slice(2);
+  }
+
+  return normalized;
+}
+
 /**
  * Verify the Ed25519 signature on incoming Discord interaction requests.
  * Returns the raw body text when valid so it can be parsed once.
@@ -18,7 +36,7 @@ export async function verifyDiscordRequest(
     };
   }
 
-  const trimmedPublicKey = publicKey?.trim();
+  const trimmedPublicKey = normalizePublicKey(publicKey);
   if (!trimmedPublicKey) {
     return {
       valid: false,
