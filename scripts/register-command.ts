@@ -5,10 +5,13 @@
  *   npm run register-command -- YOUR_GUILD_ID
  *
  * Reads DISCORD_TOKEN, DISCORD_APPLICATION_ID, and optional config vars from the environment.
- * For local dev, values come from .dev.vars when using wrangler, or export them manually.
+ * Loads `.dev.vars` automatically when present (same file Wrangler uses for `npm run dev`).
  */
 
 import { loadConfig, type ConfigEnv } from '../src/config';
+import { loadDevVars } from './load-dev-vars';
+
+loadDevVars();
 
 const DISCORD_API = 'https://discord.com/api/v10';
 
