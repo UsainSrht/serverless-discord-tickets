@@ -1,0 +1,48 @@
+{
+  "embeds": {
+    "ticketPanel": {
+      "title": "🎫 My Server Support",
+      "description": "Click below to open a private ticket with our team.",
+      "color": 5793266
+    },
+    "ticketOpened": {
+      "title": "New Support Request",
+      "descriptionTemplate": "{user} needs help.\n\n**Details:**\n{description}",
+      "color": 5763719
+    },
+    "ticketClosed": {
+      "title": "Resolved",
+      "description": "This ticket is now closed. Reach out anytime if you need more help.",
+      "color": 15548997
+    }
+  },
+  "buttons": {
+    "createTicket": {
+      "label": "Open Ticket",
+      "style": 3,
+      "emoji": { "name": "📩" }
+    },
+    "closeTicket": {
+      "label": "Close",
+      "style": 4,
+      "emoji": { "name": "✅" }
+    }
+  },
+  "modals": {
+    "createTicket": {
+      "title": "Contact Support",
+      "descriptionInput": {
+        "label": "What do you need help with?",
+        "placeholder": "Describe your issue…",
+        "style": 2,
+        "minLength": 10,
+        "maxLength": 1000,
+        "required": true
+      }
+    }
+  },
+  "messages": {
+    "ticketCreated": "Ticket created — a staff member will respond soon.",
+    "ticketClosed": "Ticket closed. Thanks for reaching out!"
+  }
+}

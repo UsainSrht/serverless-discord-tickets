@@ -1,0 +1,18 @@
+# Copy to .dev.vars and fill in your values (never commit .dev.vars).
+# Used by `wrangler dev` locally.
+
+# --- Required secrets ---
+DISCORD_TOKEN=your_bot_token
+DISCORD_PUBLIC_KEY=your_public_key
+DISCORD_APPLICATION_ID=your_application_id
+
+# --- Server structure (plain variables) ---
+TICKET_MODE=channel
+TICKET_CATEGORY_ID=123456789012345678
+ARCHIVE_CATEGORY_ID=123456789012345678
+THREAD_CHANNEL_ID=123456789012345678
+STAFF_ROLE_IDS=111111111111111111,222222222222222222
+
+# --- Private UI customization (optional) ---
+# Paste the output of: npm run encode-config -- config.overrides.json
+# BOT_CONFIG_OVERRIDES={"embeds":{"ticketPanel":{"title":"My Server"}}}

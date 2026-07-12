@@ -1,0 +1,24 @@
+{
+  "name": "serverless-discord-tickets",
+  "version": "1.0.0",
+  "description": "A fully customizable, serverless Discord ticket bot for Cloudflare Workers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "register-command": "tsx scripts/register-command.ts",
+    "encode-config": "tsx scripts/encode-config-overrides.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "discord-interactions": "^4.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250204.0",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.109.2"
+  }
+}
