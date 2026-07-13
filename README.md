@@ -54,8 +54,10 @@ The public repo only contains generic defaults — no tokens, no your UI.
 2. Choose **Connect to Git** → select your repo.
 3. Build settings:
    - **Build command:** (leave empty — Wrangler builds automatically)
-   - **Deploy command:** `npx wrangler deploy`
+   - **Deploy command:** `npx wrangler deploy --keep-vars`
 4. Finish setup. Cloudflare deploys on every push to `main`.
+
+> **Important:** Git deploys run Wrangler, which by default **removes dashboard environment variables** that are not in `wrangler.toml`. This repo sets `keep_vars = true` and uses `--keep-vars` so your Cloudflare secrets/variables survive each commit. Bot credentials must be added as **Secrets** (encrypted), not plain Environment Variables.
 
 ### Step 5 — Set Cloudflare Secrets
 
@@ -151,7 +153,7 @@ Use [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/c
 1. Edit `config.overrides.json` locally.
 2. Run `npm run encode-config -- config.overrides.json`.
 3. Update the `BOT_CONFIG_OVERRIDES` secret in Cloudflare.
-4. Redeploy (or wait for next Git push — secrets persist across deploys).
+4. Redeploy (or wait for next Git push). With `keep_vars` enabled, dashboard secrets and variables persist across deploys.
 
 No Git commit needed. Your branding stays private.
 
