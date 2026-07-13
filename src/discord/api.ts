@@ -218,6 +218,41 @@ export async function getChannel(
   return discordJson<DiscordChannel>(env, `/channels/${channelId}`);
 }
 
+export async function editChannelMessage(
+  env: Env,
+  channelId: string,
+  messageId: string,
+  payload: DiscordMessagePayload,
+): Promise<void> {
+  await discordJson(env, `/channels/${channelId}/messages/${messageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteTicketChannel(
+  env: Env,
+  channelId: string,
+): Promise<void> {
+  await discordJson(env, `/channels/${channelId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function isArchivedTicket(
+  env: Env,
+  config: BotConfig,
+  channelId: string,
+): Promise<boolean> {
+  const channel = await getChannel(env, channelId);
+
+  if (config.TICKET_MODE === 'channel') {
+    return channel.parent_id === config.structural.ARCHIVE_CATEGORY_ID;
+  }
+
+  return channel.archived === true;
+}
+
 export async function archiveTicketChannel(
   env: Env,
   config: BotConfig,

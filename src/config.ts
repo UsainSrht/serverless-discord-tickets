@@ -25,6 +25,7 @@ export interface BotConfig {
   customIds: {
     createTicketButton: string;
     closeTicketButton: string;
+    deleteTicketButton: string;
     createTicketModal: string;
     ticketDescriptionInput: string;
   };
@@ -58,6 +59,11 @@ export interface BotConfig {
       style: 1 | 2 | 3 | 4;
       emoji?: { name: string; id?: string };
     };
+    deleteTicket: {
+      label: string;
+      style: 1 | 2 | 3 | 4;
+      emoji?: { name: string; id?: string };
+    };
   };
 
   modals: {
@@ -77,8 +83,10 @@ export interface BotConfig {
   messages: {
     ticketCreated: string;
     ticketClosed: string;
+    ticketDeleted: string;
     ticketAlreadyOpen: string;
     closeNotAllowed: string;
+    deleteNotAllowed: string;
     missingPermissions: string;
     rateLimited: string;
     genericError: string;
@@ -125,6 +133,7 @@ export const defaultConfig: BotConfig = {
   customIds: {
     createTicketButton: 'btn_create_ticket',
     closeTicketButton: 'btn_close_ticket',
+    deleteTicketButton: 'btn_delete_ticket',
     createTicketModal: 'modal_create_ticket',
     ticketDescriptionInput: 'input_ticket_description',
   },
@@ -163,6 +172,11 @@ export const defaultConfig: BotConfig = {
       style: 4,
       emoji: { name: '🔒' },
     },
+    deleteTicket: {
+      label: 'Delete Ticket',
+      style: 4,
+      emoji: { name: '🗑️' },
+    },
   },
 
   modals: {
@@ -182,9 +196,11 @@ export const defaultConfig: BotConfig = {
   messages: {
     ticketCreated: 'Your ticket has been created! Check the new channel.',
     ticketClosed: 'Ticket closed and archived successfully.',
+    ticketDeleted: 'Ticket deleted from archive.',
     ticketAlreadyOpen:
       'You already have an open ticket. Please use your existing ticket channel.',
     closeNotAllowed: 'Only the ticket owner or staff can close this ticket.',
+    deleteNotAllowed: 'Only staff can delete archived tickets.',
     missingPermissions:
       'I lack permission to create or modify channels. Please check my role hierarchy and permissions.',
     rateLimited: 'Discord is rate limiting requests. Please try again in a moment.',

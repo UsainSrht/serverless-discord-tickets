@@ -1,6 +1,7 @@
 import { loadConfig } from './config';
 import type { Env } from './env';
 import { handleCloseTicketButton, runTicketClose } from './handlers/close-button';
+import { handleDeleteTicketButton, runTicketDelete } from './handlers/delete-button';
 import { handleCreateTicketButton } from './handlers/create-button';
 import { handleCreateTicketModal, runTicketCreation } from './handlers/create-modal';
 import { handleTicketCommand } from './handlers/command';
@@ -89,6 +90,13 @@ export default {
             const { response, proceed } = await handleCloseTicketButton(handlerCtx);
             if (proceed) {
               ctx.waitUntil(runTicketClose(handlerCtx));
+            }
+            return response;
+          }
+          if (customId?.startsWith(`${config.customIds.deleteTicketButton}:`)) {
+            const { response, proceed } = await handleDeleteTicketButton(handlerCtx);
+            if (proceed) {
+              ctx.waitUntil(runTicketDelete(handlerCtx));
             }
             return response;
           }

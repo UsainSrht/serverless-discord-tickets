@@ -27,6 +27,9 @@ export interface APIInteraction {
   member?: DiscordMember;
   user?: DiscordUser;
   data?: InteractionData;
+  message?: {
+    id: string;
+  };
 }
 
 export interface InteractionData {

@@ -2,13 +2,17 @@ import type { HandlerContext } from '../env';
 import {
   archiveTicketChannel,
   archiveTicketThread,
+  editChannelMessage,
   editInteractionFollowup,
   findTicketOwnerFromOverwrites,
   getChannel,
   mapDiscordErrorToMessage,
   sendChannelMessage,
 } from '../discord/api';
-import { buildTicketClosedPayload } from '../discord/components';
+import {
+  buildDeleteTicketButtonRow,
+  buildTicketClosedPayload,
+} from '../discord/components';
 import { deferredResponse } from '../responses';
 
 function getInteractionUserId(ctx: HandlerContext): string | undefined {
@@ -111,7 +115,19 @@ export async function runTicketClose(ctx: HandlerContext): Promise<void> {
       await archiveTicketThread(env, channelId);
     }
 
-    await sendChannelMessage(env, channelId, buildTicketClosedPayload(config));
+    const openingMessageId = ctx.interaction.message?.id;
+    if (openingMessageId) {
+      await editChannelMessage(env, channelId, openingMessageId, {
+        components: buildDeleteTicketButtonRow(config, channelId),
+      });
+      await sendChannelMessage(env, channelId, buildTicketClosedPayload(config));
+    } else {
+      await sendChannelMessage(
+        env,
+        channelId,
+        buildTicketClosedPayload(config, channelId),
+      );
+    }
 
     await editInteractionFollowup(
       env,

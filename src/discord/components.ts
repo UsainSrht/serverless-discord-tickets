@@ -23,6 +23,24 @@ export function buildCreateTicketButtonRow(
   return [{ type: ComponentType.ActionRow, components: [button] }];
 }
 
+export function buildDeleteTicketButtonRow(
+  config: BotConfig,
+  channelId: string,
+): Array<{ type: number; components: MessageComponent[] }> {
+  const button: MessageComponent = {
+    type: ComponentType.Button,
+    custom_id: `${config.customIds.deleteTicketButton}:${channelId}`,
+    label: config.buttons.deleteTicket.label,
+    style: config.buttons.deleteTicket.style,
+  };
+
+  if (config.buttons.deleteTicket.emoji) {
+    button.emoji = config.buttons.deleteTicket.emoji;
+  }
+
+  return [{ type: ComponentType.ActionRow, components: [button] }];
+}
+
 export function buildCloseTicketButtonRow(
   config: BotConfig,
   ownerUserId: string,
@@ -76,8 +94,11 @@ export function buildTicketOpenedPayload(
   };
 }
 
-export function buildTicketClosedPayload(config: BotConfig): DiscordMessagePayload {
-  return {
+export function buildTicketClosedPayload(
+  config: BotConfig,
+  channelId?: string,
+): DiscordMessagePayload {
+  const payload: DiscordMessagePayload = {
     embeds: [
       {
         title: config.embeds.ticketClosed.title,
@@ -86,6 +107,12 @@ export function buildTicketClosedPayload(config: BotConfig): DiscordMessagePaylo
       },
     ],
   };
+
+  if (channelId) {
+    payload.components = buildDeleteTicketButtonRow(config, channelId);
+  }
+
+  return payload;
 }
 
 export function buildCreateTicketModalPayload(
