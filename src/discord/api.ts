@@ -617,3 +617,26 @@ export async function syncGuildCommands(
   );
 }
 
+export async function registerGlobalCommands(
+  env: Env,
+  config: BotConfig,
+): Promise<DiscordApplicationCommandPayload[]> {
+  const applicationId = env.DISCORD_APPLICATION_ID?.trim();
+  if (!applicationId || !env.DISCORD_TOKEN?.trim()) {
+    throw new Error(
+      'Missing DISCORD_APPLICATION_ID or DISCORD_TOKEN in environment.',
+    );
+  }
+
+  const commands = buildApplicationCommands(config);
+  return discordJson<DiscordApplicationCommandPayload[]>(
+    env,
+    `/applications/${applicationId}/commands`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(commands),
+    },
+  );
+}
+
+

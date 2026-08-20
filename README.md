@@ -1,4 +1,4 @@
-# 🎫 Serverless Discord Tickets
+# Serverless Discord Tickets
 
 A modern, open-source, and fully customizable Discord support ticket system built for **Cloudflare Workers**. 
 
@@ -6,65 +6,67 @@ Powered 100% by Discord's **HTTP Interactions API** — meaning **zero WebSocket
 
 Includes a **built-in Web UI Dashboard** accessible directly from Discord via `/ticket-admin customize` featuring live Discord embed previews, server role/channel pickers, and real-time command syncing.
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/UsainSrht/serverless-discord-tickets)
+
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [How It Works & Architecture](#-how-it-works--architecture)
-- [Step-by-Step Setup Guide](#-step-by-step-setup-guide)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture & How It Works](#architecture--how-it-works)
+- [Step-by-Step Setup Guide (No Code / Dashboard Only)](#step-by-step-setup-guide-no-code--dashboard-only)
   - [1. Create & Configure Discord Application](#1-create--configure-discord-application)
-  - [2. Clone & Install Dependencies](#2-clone--install-dependencies)
-  - [3. Set Up Cloudflare KV](#3-set-up-cloudflare-kv)
-  - [4. Set Secrets & Deploy](#4-set-secrets--deploy)
-  - [5. Set Discord Interactions Endpoint](#5-set-discord-interactions-endpoint)
-  - [6. Register Slash Commands](#6-register-slash-commands)
-  - [7. Customize & Post Panel](#7-customize--post-panel)
-- [Features & Usage Guide](#-features--usage-guide)
-  - [Web UI Customization Dashboard](#web-ui-customization-dashboard-ticket-admin-customize)
+  - [2. Deploy to Cloudflare Workers](#2-deploy-to-cloudflare-workers)
+  - [3. Configure KV Storage & Secrets in Cloudflare](#3-configure-kv-storage--secrets-in-cloudflare)
+  - [4. Set Discord Interactions Endpoint](#4-set-discord-interactions-endpoint)
+  - [5. Register Slash Commands](#5-register-slash-commands)
+  - [6. Customize Settings & Post Ticket Panel](#6-customize-settings--post-ticket-panel)
+  - [7. Receiving Automatic Updates](#7-receiving-automatic-updates)
+- [Features & Usage Guide](#features--usage-guide)
+  - [Web UI Customization Dashboard](#web-ui-customization-dashboard)
   - [Ticket Modes (Channel vs. Thread)](#ticket-modes-channel-vs-thread)
   - [Slash Commands & Aliases](#slash-commands--aliases)
   - [Ticket Panels & Modal Flow](#ticket-panels--modal-flow)
   - [Ticket Lifecycle: Archive & Deletion](#ticket-lifecycle-archive--deletion)
   - [Concurrent Ticket Limits](#concurrent-ticket-limits)
   - [Multi-Language Localizations](#multi-language-localizations)
-- [Configuration Layers](#-configuration-layers)
-- [Local Development](#-local-development)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Local Development (For Developers)](#local-development-for-developers)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🌟 Overview
+## Overview
 
-Traditional Discord ticket bots run continuous Node.js / Python gateway processes that stay connected 24/7, consuming RAM and computing power even when nobody is opening a ticket.
+Traditional Discord ticket bots run continuous Node.js or Python gateway processes that stay connected 24/7, consuming server memory and CPU even when nobody is opening a ticket.
 
 **Serverless Discord Tickets** leverages Discord's HTTP webhook interactions. When a user clicks a button, submits a modal, or runs a slash command, Discord sends an HTTP POST request to your Cloudflare Worker. The worker verifies cryptographic signatures (Ed25519), processes the action in milliseconds, and sleeps.
 
-- ⚡ **Lightning Fast**: Sub-100ms global edge response times.
-- 💰 **100% Free to Host**: Comfortably fits inside Cloudflare Workers' generous free tier (100,000 requests/day).
-- 🎨 **Visual Customizer**: No need to edit code to change colors, titles, emojis, or messages.
-- 🔒 **Secure**: Ephemeral admin links, role-based access control, and signature verification.
+- **Fast**: Global edge response times with sub-100ms execution.
+- **100% Free to Host**: Runs inside Cloudflare Workers' free tier (100,000 requests/day).
+- **Zero File Editing**: Fully configurable through the built-in Web UI and Cloudflare Dashboard.
+- **Auto-Updating**: Connect via GitHub and receive upstream improvements with one click.
+- **Secure**: Ephemeral admin authentication, signature verification, and role-based access.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- **Built-in Web UI Customizer**: Run `/ticket-admin customize` to get an ephemeral, secure 10-minute web dashboard link.
-- **Live Discord Preview**: See real-time previews of panel embeds, opened ticket embeds, and closed ticket embeds as you customize colors, text, and emojis.
-- **Server Introspection**: Web dashboard automatically populates dropdowns and role pills with your server's actual categories, channels, and staff roles.
+- **Built-in Web UI Customizer**: Run `/ticket-admin customize` in Discord to receive a secure 10-minute web dashboard link.
+- **Live Discord Preview**: Real-time visual previews of panel embeds, opened ticket embeds, and closed ticket embeds as you customize colors, text, and emojis.
+- **Server Introspection**: Web dashboard automatically populates dropdowns with your server's actual categories, channels, and staff roles.
 - **Dual Ticket Modes**:
   - **Channel Mode**: Dedicated private text channels with automatic permission overwrites and category archival.
   - **Thread Mode**: Lightweight private threads inside a designated support channel.
 - **Configurable Ticket Limits**: Restrict users to a maximum number of concurrent open tickets (default: 1) or allow unlimited.
-- **Customizable Commands & Aliases**: Rename `/ticket` (e.g. to `/destek`, `/help`, `/support`), define alternative aliases, and configure native Discord localized names/descriptions for multiple languages.
-- **Real-Time Command Sync**: Updating command names or aliases in the Web UI immediately synchronizes with Discord without worker redeployment.
-- **Full Role & Permission Management**: Ticket owners and designated staff roles can view/manage tickets; only staff can delete archived tickets.
+- **Customizable Commands & Aliases**: Rename `/ticket` (e.g. to `/destek`, `/help`, `/support`), define aliases, and configure Discord localized names for multiple languages.
+- **Real-Time Command Sync**: Updating command names or aliases in the Web UI immediately synchronizes with Discord without redeploying.
+- **Full Role & Permission Management**: Ticket owners and designated staff roles can view and manage tickets; only staff can delete archived tickets.
 
 ---
 
-## 🏗 How It Works & Architecture
+## Architecture & How It Works
 
 ```mermaid
 sequenceDiagram
@@ -75,11 +77,11 @@ sequenceDiagram
     participant KV as Cloudflare KV (TICKETS_KV)
 
     User->>Discord: Click "Create Ticket" or run /ticket
-    Discord->>Worker: POST / (Ed25519 Verified)
+    Discord->>Worker: POST / (Ed25519 Signature Verified)
     Worker->>Discord: Pop Modal (Title, Description Input)
     User->>Discord: Submit Modal
     Discord->>Worker: POST / (ModalSubmit)
-    Worker->>KV: Check guild configuration & rate limits
+    Worker->>KV: Read guild configuration & active ticket count
     Worker->>Discord: Create Channel/Thread with Permissions
     Worker->>Discord: Send Embed + "Close Ticket" button
     Worker-->>User: Ephemeral Confirmation ("Ticket created! <#channel>")
@@ -87,24 +89,25 @@ sequenceDiagram
 
 ---
 
-## 🚀 Step-by-Step Setup Guide
+## Step-by-Step Setup Guide (No Code / Dashboard Only)
 
-Follow these step-by-step instructions to deploy the bot and add it to your Discord server.
+You do not need to install any software, edit source code, or run terminal commands. The entire setup is performed through the Discord and Cloudflare dashboards.
 
 ### 1. Create & Configure Discord Application
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**.
-2. Give your bot a name and accept the terms.
-3. In **General Information**:
-   - Copy the **Application ID**.
-   - Copy the **Public Key**.
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application** (top right).
+2. Enter a name for your bot, accept the terms, and click **Create**.
+3. Under **General Information**:
+   - Copy and save your **Application ID**.
+   - Copy and save your **Public Key**.
 4. In the left menu, navigate to **Bot**:
-   - Click **Reset Token** (or **Add Bot**) and copy your **Bot Token**.
-5. In the left menu, navigate to **OAuth2 → URL Generator**:
-   - Under **Scopes**, check:
+   - Click **Reset Token** (confirm with 2FA if prompted).
+   - Copy and save your **Bot Token**.
+5. In the left menu, navigate to **OAuth2** → **URL Generator**:
+   - Under **Scopes**, select:
      - `bot`
      - `applications.commands`
-   - Under **Bot Permissions**, check:
+   - Under **Bot Permissions**, select:
      - **Manage Channels** (required for channel mode)
      - **Manage Threads** (required for thread mode)
      - **Send Messages**
@@ -113,176 +116,137 @@ Follow these step-by-step instructions to deploy the bot and add it to your Disc
      - **Read Message History**
      - **Attach Files**
      - **Use External Emojis**
-   - Copy the generated URL at the bottom, paste it into your browser, and invite the bot to your server.
+   - Copy the generated URL at the bottom of the page, open it in a new browser tab, and invite the bot to your Discord server.
 
 ---
 
-### 2. Clone & Install Dependencies
+### 2. Deploy to Cloudflare Workers
 
-Clone the repository and install the project dependencies:
+Choose **Option A** (One-Click) or **Option B** (Manual Git Connect):
 
-```bash
-git clone https://github.com/your-username/serverless-discord-tickets.git
-cd serverless-discord-tickets
-npm install
+#### Option A: 1-Click Deploy
+Click the button below to start the automated Cloudflare deployment wizard:
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/UsainSrht/serverless-discord-tickets)
+
+Cloudflare will prompt you to log in, authorize GitHub, create a fork of this repository in your account, and deploy the worker automatically.
+
+#### Option B: Connect Existing Git Repository
+1. Go to the [GitHub Repository](https://github.com/UsainSrht/serverless-discord-tickets) and click **Fork** (top right).
+2. Open the [Cloudflare Dashboard](https://dash.cloudflare.com/).
+3. In the sidebar, go to **Workers & Pages** → click **Create application** → **Pages / Workers** → select **Connect to Git**.
+4. Select your forked `serverless-discord-tickets` repository and click **Begin setup**.
+5. Leave the build settings as default and click **Save and Deploy**.
+
+---
+
+### 3. Configure KV Storage & Secrets in Cloudflare
+
+#### Step 3.1: Create KV Namespace
+1. In Cloudflare Dashboard, go to **Storage & Databases** → **KV** in the left sidebar.
+2. Click **Create namespace**.
+3. Set the namespace name to `TICKETS_KV` and click **Add**.
+
+#### Step 3.2: Bind KV to Your Worker
+1. In Cloudflare Dashboard, go to **Workers & Pages** and click on your newly deployed worker.
+2. Navigate to **Settings** → **Bindings** (or **Variables and Secrets** depending on dashboard layout).
+3. Under **KV Namespace Bindings**, click **Add**:
+   - **Variable name**: `TICKETS_KV` *(must be exact uppercase)*
+   - **KV namespace**: Select `TICKETS_KV` from the dropdown.
+4. Click **Save and deploy**.
+
+#### Step 3.3: Add Discord Secrets
+1. In your Worker's **Settings** → **Variables and Secrets** (or **Environment Variables**), click **Add** under **Environment Variables / Secrets**.
+2. Add the following 3 variables (select **Encrypt** for secrets):
+
+| Variable Name | Value | Type |
+| :--- | :--- | :--- |
+| `DISCORD_TOKEN` | Paste your **Bot Token** (from Step 1) | Secret (Encrypted) |
+| `DISCORD_PUBLIC_KEY` | Paste your **Public Key** (from Step 1) | Plain text / Secret |
+| `DISCORD_APPLICATION_ID` | Paste your **Application ID** (from Step 1) | Plain text / Secret |
+
+3. Click **Deploy** / **Save**.
+
+---
+
+### 4. Set Discord Interactions Endpoint
+
+1. Go to your Worker's overview page in Cloudflare Dashboard and copy your live Worker URL (e.g. `https://serverless-discord-tickets.your-subdomain.workers.dev`).
+2. Open the [Discord Developer Portal](https://discord.com/developers/applications) and select your application.
+3. Under **General Information**, locate the **Interactions Endpoint URL** field.
+4. Paste your Worker URL into the field and click **Save Changes**.
+
+> [!NOTE]
+> Discord sends a verification ping immediately when you save. If Discord reports an error, verify that `DISCORD_PUBLIC_KEY` is saved correctly in your Cloudflare secrets.
+
+---
+
+### 5. Register Slash Commands
+
+To register the `/ticket` and `/ticket-admin` slash commands with Discord, open your browser and visit your worker's registration link:
+
+```
+https://YOUR_WORKER_URL.workers.dev/register-commands
 ```
 
----
-
-### 3. Set Up Cloudflare KV
-
-The Web UI dashboard and per-server configurations require a Cloudflare KV namespace named `TICKETS_KV`.
-
-#### How to Create and Find Your KV Namespace ID:
-
-- **Method A — Via CLI (Recommended)**:
-  1. Log in to Wrangler:
-     ```bash
-     npx wrangler login
-     ```
-  2. Create the namespace:
-     ```bash
-     npx wrangler kv:namespace create TICKETS_KV
-     ```
-  3. Look at the terminal output. Wrangler will print a snippet like:
-     ```toml
-     [[kv_namespaces]]
-     binding = "TICKETS_KV"
-     id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-     ```
-
-- **Method B — Via Cloudflare Dashboard**:
-  1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **KV**.
-  2. Click **Create Namespace** and name it `TICKETS_KV`.
-  3. In the list of KV namespaces, copy the **Namespace ID** for `TICKETS_KV` (a 32-character hexadecimal string).
-
-#### Bind the KV Namespace in `wrangler.toml`:
-
-Open [wrangler.toml](file:///h:/IdeaProjects/serverless-discord-tickets/wrangler.toml) in your editor and uncomment / update the `[[kv_namespaces]]` block:
-
-```toml
-[[kv_namespaces]]
-binding = "TICKETS_KV"
-id = "PASTE_YOUR_32_CHAR_KV_NAMESPACE_ID_HERE"
+You will receive a JSON response confirming that slash commands have been registered:
+```json
+{
+  "success": true,
+  "scope": "global",
+  "message": "Successfully registered slash commands with Discord!",
+  "commands": ["ticket", "ticket-admin"]
+}
 ```
 
 > [!TIP]
-> If you are deploying via Cloudflare Dashboard (Git integration) instead of CLI:
-> Go to your Worker in Cloudflare Dashboard → **Settings** → **Variables and Secrets** → **KV Namespace Bindings** → **Add Binding**:
-> - **Variable name**: `TICKETS_KV`
-> - **KV namespace**: Select your `TICKETS_KV` namespace.
+> Discord global commands may take a few minutes to appear in all servers. To register commands **instantly** to a specific server with zero delay, add your Server ID to the URL:
+> `https://YOUR_WORKER_URL.workers.dev/register-commands?guild=YOUR_SERVER_ID`
 
 ---
 
-### 4. Set Secrets & Deploy
+### 6. Customize Settings & Post Ticket Panel
 
-Before or during deployment, your worker needs your Discord bot credentials.
-
-#### Option A: Deploy via CLI (Wrangler)
-
-1. Set your Discord secrets in Cloudflare:
-   ```bash
-   npx wrangler secret put DISCORD_TOKEN
-   # Paste your Bot Token when prompted
-
-   npx wrangler secret put DISCORD_PUBLIC_KEY
-   # Paste your Public Key when prompted
-
-   npx wrangler secret put DISCORD_APPLICATION_ID
-   # Paste your Application ID when prompted
-   ```
-2. Deploy the worker to Cloudflare:
-   ```bash
-   npm run deploy
-   ```
-3. Wrangler will print your live Worker URL (e.g. `https://serverless-discord-tickets.your-subdomain.workers.dev`). **Copy this URL.**
-
-#### Option B: Deploy via GitHub & Cloudflare Dashboard
-
-1. Commit and push your code (with the updated `wrangler.toml`) to GitHub.
-2. In the [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Pages / Workers** → **Connect to Git**.
-3. Select your repository and set Deploy command:
-   ```bash
-   npx wrangler deploy --keep-vars
-   ```
-4. Once created, navigate to your Worker → **Settings** → **Variables and Secrets** → **Secrets**, and add:
-   - `DISCORD_TOKEN`
-   - `DISCORD_PUBLIC_KEY`
-   - `DISCORD_APPLICATION_ID`
-5. Copy your Worker URL from the dashboard overview (e.g. `https://serverless-discord-tickets.your-subdomain.workers.dev`).
-
----
-
-### 5. Set Discord Interactions Endpoint
-
-Discord needs to know where to send button clicks, slash commands, and modal submissions.
-
-1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and select your application.
-2. Under **General Information**, find **Interactions Endpoint URL**.
-3. Paste your live Cloudflare Worker URL:
-   ```
-   https://serverless-discord-tickets.your-subdomain.workers.dev
-   ```
-4. Click **Save Changes**.
-
-> [!IMPORTANT]
-> If Discord shows an error saving the URL:
-> 1. Make sure your worker is deployed (`npm run deploy`).
-> 2. Verify that `DISCORD_PUBLIC_KEY` is set correctly in Cloudflare Secrets.
-> 3. Visit your worker URL in your browser — it should return `{"status":"running", ...}` with `discordPublicKeyValidFormat: true`.
-
----
-
-### 6. Register Slash Commands
-
-Register `/ticket` and `/ticket-admin` to your Discord server:
-
-1. Ensure your `.dev.vars` file has your credentials:
-   ```ini
-   DISCORD_TOKEN=your_bot_token
-   DISCORD_APPLICATION_ID=your_application_id
-   ```
-2. Run the registration script with your Guild (Server) ID:
-   ```bash
-   npm run register-command -- YOUR_GUILD_ID
-   ```
-   *(To get your Server ID: In Discord, enable Developer Mode under User Settings → Advanced, then right-click your server icon and select **Copy Server ID**).*
-
----
-
-### 7. Customize & Post Support Panel
-
-Now that the bot and commands are live:
-
-1. **Customize via Web UI**:
-   - In any channel on your Discord server, type:
+1. **Open the Web UI**:
+   - Go to your Discord server and type:
      ```
      /ticket-admin customize
      ```
-   - Click the **Open Customization Web UI** button.
-   - Select your **Ticket Category**, **Archive Category**, **Staff Roles**, and customize embeds/colors.
-   - Click **Save Changes** — the bot will save to `TICKETS_KV` and automatically sync slash commands!
-
-2. **Post the Ticket Panel**:
-   - In your dedicated support channel (e.g. `#tickets` or `#support`), type:
+   - Click the **Open Customization Web UI** button in the bot's response.
+2. **Configure Your Server**:
+   - Select your **Ticket Category**, **Archive Category**, and **Staff Roles**.
+   - Customize embed colors, titles, descriptions, and button labels.
+   - Click **Save Changes** (the bot will save to `TICKETS_KV` and automatically sync slash commands).
+3. **Post the Support Panel**:
+   - In your support channel (e.g. `#tickets` or `#support`), type:
      ```
      /ticket-admin panel
      ```
-   - The bot will post the embed panel with the **Create Ticket** button.
-   - Test it by clicking **Create Ticket**!
+   - The bot will post the support panel embed with the **Create Ticket** button.
 
 ---
 
-## 🛠 Features & Usage Guide
+### 7. Receiving Automatic Updates
 
-### Web UI Customization Dashboard (`/ticket-admin customize`)
+When updates, improvements, or bug fixes are published to the main repository:
 
-The Web UI dashboard allows server administrators to configure every aspect of the ticket system without touching code or redeploying.
+1. Open your forked repository on GitHub.
+2. Click **Sync fork** → **Update branch**.
+3. Cloudflare Workers will automatically detect the commit, build, and deploy the new version.
+4. **All your secrets (`DISCORD_TOKEN`), configurations, and KV bindings remain untouched.**
 
-- **How to access**: Run `/ticket-admin customize` in your server. The bot returns an ephemeral message with a secure link valid for 10 minutes.
-- **What you can customize**:
-  - **Structure**: Ticket Mode (Channel or Thread), Active Category, Archive Category, Support Thread Channel, Staff Roles, and Max Open Tickets Per User.
-  - **Commands & Aliases**: Custom primary command name, alternative aliases (e.g., `destek`, `talep`, `support`), and Discord name/description localizations.
+---
+
+## Features & Usage Guide
+
+### Web UI Customization Dashboard
+
+The Web UI dashboard allows administrators to configure the ticket bot visually without touching code.
+
+- **Access**: Run `/ticket-admin customize` in any channel on your Discord server.
+- **Configurable Settings**:
+  - **Structure**: Ticket Mode (Channel or Thread), Active Category, Archive Category, Support Thread Channel, Staff Roles, and Concurrent Ticket Limits.
+  - **Commands & Aliases**: Custom primary command name, alternative aliases (e.g., `destek`, `support`), and Discord name/description localizations.
   - **Embeds & Appearance**: Live preview of the Panel, Ticket Opened, and Ticket Closed embeds. Customize titles, description templates, and colors.
   - **Buttons & Modals**: Button labels, styles (Primary, Secondary, Success, Danger), emojis, modal titles, and input placeholders.
   - **Channel Naming**: Formats such as `ticket-{username}` or `ticket-{userId}`.
@@ -293,24 +257,22 @@ The Web UI dashboard allows server administrators to configure every aspect of t
 
 | Feature | Channel Mode (`channel`) | Thread Mode (`thread`) |
 | :--- | :--- | :--- |
-| **Best For** | Large servers, formal support, archiving history | Small/medium servers, clutter-free setup |
+| **Best For** | Structured servers, dedicated archiving | Lightweight support, clutter-free setup |
 | **Location** | Dedicated category (`TICKET_CATEGORY_ID`) | Parent text channel (`THREAD_CHANNEL_ID`) |
-| **Privacy** | Hidden from `@everyone`; visible only to ticket owner and staff roles | Private thread; only accessible to invited member and staff |
+| **Privacy** | Hidden from `@everyone`; visible to ticket owner and staff | Private thread; accessible only to invited member and staff |
 | **Close Action** | Moved to `ARCHIVE_CATEGORY_ID`; user access revoked | Thread archived and locked |
-| **Delete Action** | Staff can permanently delete the channel via the "Delete" button | Deleted via Discord channel controls |
+| **Delete Action** | Staff can permanently delete the channel via the "Delete" button | Managed via Discord channel controls |
 
 ---
 
 ### Slash Commands & Aliases
 
-The bot includes two main command structures:
-
-#### 1. User Ticket Command (`/ticket`)
+#### User Ticket Command (`/ticket`)
 - **Default**: `/ticket`
 - **Aliases**: Configurable in Web UI (e.g., `/destek`, `/help`, `/support`).
 - **Usage**: Any server member runs `/ticket` to open a modal popup requesting a description of their issue.
 
-#### 2. Admin Command (`/ticket-admin`)
+#### Admin Command (`/ticket-admin`)
 - **Subcommands**:
   - `/ticket-admin panel` — Posts the support panel embed with the "Create Ticket" button in the current channel.
   - `/ticket-admin customize` — Generates a 10-minute secure link to the Web UI dashboard.
@@ -322,9 +284,9 @@ The bot includes two main command structures:
 
 1. **Panel Creation**: Run `/ticket-admin panel` in your support channel.
 2. **User Interaction**: A user clicks the **Create Ticket** button (or runs `/ticket`).
-3. **Modal Prompt**: Discord displays a popup asking for the issue description.
-4. **Channel Creation**: The bot creates a private channel/thread, pings the configured staff roles and ticket creator, and displays the **Ticket Opened** embed.
-5. **Direct Navigation**: The user receives an ephemeral link directly to their new ticket channel.
+3. **Modal Prompt**: Discord displays a popup asking for the issue title and description.
+4. **Channel Creation**: The bot creates a private channel or thread, pings the configured staff roles and ticket creator, and displays the **Ticket Opened** embed.
+5. **Direct Navigation**: The user receives an ephemeral message with a direct link to their new ticket channel.
 
 ---
 
@@ -342,18 +304,16 @@ The bot includes two main command structures:
 
 ### Concurrent Ticket Limits
 
-Prevent ticket spam by configuring `MAX_OPEN_TICKETS_PER_USER`:
+Prevent ticket spam by configuring maximum open tickets per user:
 - Set to `1` (default) to allow only 1 open ticket per user at a time.
 - Set to any positive number (e.g., `3`) for custom limits.
 - Set to `0` to disable limits and allow unlimited open tickets.
-
-When a user reaches their limit, the bot blocks creation and sends an ephemeral message explaining they already have active tickets.
 
 ---
 
 ### Multi-Language Localizations
 
-Discord natively supports slash command localizations. You can configure translated command names and descriptions for different languages (e.g., English, Turkish, German, Spanish, French):
+Discord natively supports slash command localizations. You can configure translated command names and descriptions for different languages (e.g., English, Turkish, German, Spanish, French) via the Web UI:
 
 ```json
 {
@@ -370,149 +330,54 @@ Discord natively supports slash command localizations. You can configure transla
 }
 ```
 
-When users have their Discord client set to these languages, Discord automatically displays the localized command.
-
 ---
 
-## ⚙️ Configuration Layers
+## Local Development (For Developers)
 
-The bot resolves its settings using a multi-layer configuration hierarchy:
-
-```mermaid
-flowchart TD
-    A[1. Code Defaults<br/><code>src/config.ts</code>] --> B[2. Global / Fallback Overrides<br/><code>BOT_CONFIG_OVERRIDES</code> Secret]
-    B --> C[3. Per-Guild KV Customizations<br/><code>TICKETS_KV (guild_config:ID)</code>]
-    C --> D[Effective Runtime Config]
-```
-
-| Layer | Storage | Managed By | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Code Defaults** | `src/config.ts` | Source Code | Base defaults and fallback values |
-| **Global Overrides** | `BOT_CONFIG_OVERRIDES` (Secret) | Cloudflare Secrets / `.dev.vars` | Global instance defaults without editing code |
-| **Guild Customizations** | Cloudflare KV (`TICKETS_KV`) | Web UI Dashboard | Server-specific settings, channels, roles, and styles |
-
-### Encoding Config Overrides
-
-If you want to set global overrides using `BOT_CONFIG_OVERRIDES`:
-
-1. Copy [config.overrides.example.json](file:///h:/IdeaProjects/serverless-discord-tickets/config.overrides.example.json) to `config.overrides.json` and adjust your values.
-2. Run the encoder:
-   ```bash
-   npm run encode-config -- config.overrides.json
-   ```
-3. Copy the output string and set it in Cloudflare Secrets:
-   ```bash
-   npx wrangler secret put BOT_CONFIG_OVERRIDES
-   ```
-
----
-
-## 💻 Local Development
+If you are developing or contributing to the codebase:
 
 ### 1. Environment Setup
-
-Copy `.dev.vars.example` to `.dev.vars` and configure your test credentials:
+Copy `.dev.vars.example` to `.dev.vars` and configure your credentials:
 
 ```ini
 DISCORD_TOKEN=your_bot_token
 DISCORD_PUBLIC_KEY=your_public_key
 DISCORD_APPLICATION_ID=your_application_id
-
-TICKET_MODE=channel
-TICKET_CATEGORY_ID=your_ticket_category_id
-ARCHIVE_CATEGORY_ID=your_archive_category_id
-STAFF_ROLE_IDS=your_staff_role_id
 ```
 
 ### 2. Run Local Worker
-
-Start the local Wrangler development server:
-
 ```bash
+npm install
 npm run dev
 ```
 
 ### 3. Expose Local Worker to Discord
-
-Because Discord interactions require a public HTTPS URL:
-1. Use a tunneling tool such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) or [ngrok](https://ngrok.com/):
-   ```bash
-   ngrok http 8787
-   ```
-2. Paste the HTTPS forwarding URL into your **Discord Developer Portal → Interactions Endpoint URL**.
+Use a tunneling tool such as Cloudflare Tunnel or ngrok to forward Discord interactions to your local server:
+```bash
+ngrok http 8787
+```
+Paste the forwarding URL into your **Discord Developer Portal → Interactions Endpoint URL**.
 
 ### 4. Type Checking
-
-Validate TypeScript types across the project:
-
 ```bash
 npm run typecheck
 ```
 
 ---
 
-## 📁 Project Structure
-
-```
-serverless-discord-tickets/
-├── scripts/
-│   ├── encode-config-overrides.ts  # CLI tool to stringify JSON overrides
-│   ├── load-dev-vars.ts            # Local development env helper
-│   └── register-command.ts         # Script to register Discord slash commands
-├── src/
-│   ├── discord/
-│   │   ├── api.ts                  # Discord REST API client & error handling
-│   │   └── components.ts           # Discord embeds, buttons, and modal builders
-│   ├── handlers/
-│   │   ├── close-button.ts         # Handles ticket closing & archiving
-│   │   ├── command.ts              # Handles /ticket and /ticket-admin panel commands
-│   │   ├── create-button.ts        # Handles "Create Ticket" button clicks
-│   │   ├── create-modal.ts         # Handles modal submission & channel creation
-│   │   ├── customize-command.ts    # Generates secure Web UI session tokens
-│   │   └── delete-button.ts        # Handles ticket deletion from archive
-│   ├── web/
-│   │   ├── html.ts                 # Web UI single-page application & preview renderer
-│   │   └── router.ts               # Web UI routes & REST API endpoints
-│   ├── config.ts                   # Bot configuration schemas, defaults, & mergers
-│   ├── env.ts                      # Environment bindings & permission bitmasks
-│   ├── index.ts                    # Worker entrypoint & interaction routing
-│   ├── responses.ts                # Interaction response helpers
-│   ├── types.ts                    # Discord API & interaction TypeScript types
-│   └── verify.ts                   # Ed25519 request signature verification
-├── config.overrides.example.json   # Example JSON overrides template
-├── wrangler.toml                   # Cloudflare Workers configuration
-└── package.json
-```
-
----
-
-## 🤝 Contributing
+## Contributing
 
 Contributions, issues, and feature requests are welcome!
 
-1. **Fork the Repository**
-2. **Create a Feature Branch**:
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Commit Your Changes**:
-   ```bash
-   git commit -m "Add amazing new feature"
-   ```
-4. **Check Types & Linting**:
-   ```bash
-   npm run typecheck
-   ```
-5. **Push to the Branch**:
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-6. **Open a Pull Request**
-
-Please make sure your code adheres to TypeScript standards and includes appropriate error handling.
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/amazing-feature`.
+3. Commit your changes: `git commit -m "Add amazing new feature"`.
+4. Validate types: `npm run typecheck`.
+5. Push to the branch: `git push origin feature/amazing-feature`.
+6. Open a Pull Request.
 
 ---
 
-## 📜 License
+## License
 
-This project is licensed under the [MIT License](file:///h:/IdeaProjects/serverless-discord-tickets/LICENSE).
+This project is licensed under the [MIT License](LICENSE).

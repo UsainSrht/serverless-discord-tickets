@@ -37,18 +37,23 @@ function healthResponse(env: Env): Response {
   const publicKey = normalizePublicKey(env.DISCORD_PUBLIC_KEY);
 
   return new Response(
-    JSON.stringify({
-      status: 'running',
-      checks: {
-        discordPublicKeySet: publicKey.length > 0,
-        discordPublicKeyLength: publicKey.length,
-        discordPublicKeyValidFormat: /^[0-9a-fA-F]{64}$/.test(publicKey),
-        discordApplicationIdSet: Boolean(env.DISCORD_APPLICATION_ID?.trim()),
-        discordTokenSet: Boolean(env.DISCORD_TOKEN?.trim()),
+    JSON.stringify(
+      {
+        status: 'running',
+        checks: {
+          discordPublicKeySet: publicKey.length > 0,
+          discordPublicKeyLength: publicKey.length,
+          discordPublicKeyValidFormat: /^[0-9a-fA-F]{64}$/.test(publicKey),
+          discordApplicationIdSet: Boolean(env.DISCORD_APPLICATION_ID?.trim()),
+          discordTokenSet: Boolean(env.DISCORD_TOKEN?.trim()),
+        },
+        registerCommandsEndpoint: '/register-commands',
+        hint:
+          'Open /register-commands in your browser to register slash commands with Discord, or /register-commands?guild=YOUR_SERVER_ID for instant server registration.',
       },
-      hint:
-        'Discord verification needs discordPublicKeyValidFormat=true and a redeployed worker that rejects invalid signatures with HTTP 401.',
-    }),
+      null,
+      2,
+    ),
     {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

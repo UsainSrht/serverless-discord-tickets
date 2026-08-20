@@ -1,8 +1,9 @@
-import { loadGuildConfig, type BotConfig, type DeepPartial } from '../config';
+import { loadConfig, loadGuildConfig, type BotConfig, type DeepPartial } from '../config';
 import {
   getGuildChannels,
   getGuildDetails,
   getGuildRoles,
+  registerGlobalCommands,
   syncGuildCommands,
 } from '../discord/api';
 import { getKV, type Env } from '../env';
@@ -19,6 +20,8 @@ export function isWebRequest(url: URL): boolean {
   return (
     path === '/customize' ||
     path === '/config' ||
+    path === '/register-commands' ||
+    path === '/register' ||
     path === '/api/session-data' ||
     path === '/api/config' ||
     path === '/api/sync-commands'
@@ -31,6 +34,86 @@ export async function handleWebRequest(
 ): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
+
+  // Handle /register-commands endpoint (one-click browser slash command registration)
+  if (path === '/register-commands' || path === '/register') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
+      return new Response('Method Not Allowed', { status: 405 });
+    }
+
+    const guildId = url.searchParams.get('guild')?.trim();
+    try {
+      const config = loadConfig(env);
+      if (guildId) {
+        const registered = await syncGuildCommands(env, guildId, config);
+        return new Response(
+          JSON.stringify(
+            {
+              success: true,
+              scope: 'guild',
+              guildId,
+              message: `Successfully registered ${registered.length} slash commands to server ${guildId}!`,
+              commands: registered.map((c) => c.name),
+            },
+            null,
+            2,
+          ),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              ...NO_CACHE_HEADERS,
+            },
+          },
+        );
+      }
+
+      const registered = await registerGlobalCommands(env, config);
+      return new Response(
+        JSON.stringify(
+          {
+            success: true,
+            scope: 'global',
+            message: `Successfully registered ${registered.length} global slash commands with Discord! (Note: Global commands may take a few minutes to propagate across Discord. For instant registration to a specific server, open /register-commands?guild=YOUR_SERVER_ID)`,
+            commands: registered.map((c) => c.name),
+          },
+          null,
+          2,
+        ),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
+      );
+    } catch (error) {
+      console.error('Error registering slash commands:', error);
+      return new Response(
+        JSON.stringify(
+          {
+            success: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to register commands.',
+            hint: 'Ensure DISCORD_APPLICATION_ID and DISCORD_TOKEN are set in Cloudflare Dashboard → Settings → Variables and Secrets.',
+          },
+          null,
+          2,
+        ),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
+      );
+    }
+  }
+
   const token = url.searchParams.get('token')?.trim();
 
   if (!token) {
