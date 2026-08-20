@@ -1,4 +1,4 @@
-import { loadGuildConfig, type BotConfig } from './config';
+import { loadGuildConfig, sanitizeCommandName, type BotConfig } from './config';
 import type { Env } from './env';
 import { handleCloseTicketButton, runTicketClose } from './handlers/close-button';
 import { handleDeleteTicketButton, runTicketDelete } from './handlers/delete-button';
@@ -13,10 +13,10 @@ import { handleWebRequest, isWebRequest } from './web/router';
 
 function matchesTicketCommand(name: string | undefined, config: BotConfig): boolean {
   if (!name) return false;
-  const n = name.toLowerCase();
-  const primary = config.commands.ticket?.name?.toLowerCase();
-  const aliases = (config.commands.ticket?.aliases || []).map((a) => a.toLowerCase());
-  const localizations = Object.values(config.commands.ticket?.nameLocalizations || {}).map((l) => l.toLowerCase());
+  const n = sanitizeCommandName(name);
+  const primary = config.commands.ticket?.name ? sanitizeCommandName(config.commands.ticket.name) : 'ticket';
+  const aliases = (config.commands.ticket?.aliases || []).map((a) => sanitizeCommandName(a)).filter(Boolean);
+  const localizations = Object.values(config.commands.ticket?.nameLocalizations || {}).map((l) => sanitizeCommandName(l)).filter(Boolean);
   const defaults = ['ticket', 'tickets', 'destek'];
 
   return n === primary || aliases.includes(n) || localizations.includes(n) || defaults.includes(n);
@@ -24,10 +24,10 @@ function matchesTicketCommand(name: string | undefined, config: BotConfig): bool
 
 function matchesTicketAdminCommand(name: string | undefined, config: BotConfig): boolean {
   if (!name) return false;
-  const n = name.toLowerCase();
-  const primary = config.commands.ticketAdmin?.name?.toLowerCase();
-  const aliases = (config.commands.ticketAdmin?.aliases || []).map((a) => a.toLowerCase());
-  const localizations = Object.values(config.commands.ticketAdmin?.nameLocalizations || {}).map((l) => l.toLowerCase());
+  const n = sanitizeCommandName(name);
+  const primary = config.commands.ticketAdmin?.name ? sanitizeCommandName(config.commands.ticketAdmin.name) : 'ticket-admin';
+  const aliases = (config.commands.ticketAdmin?.aliases || []).map((a) => sanitizeCommandName(a)).filter(Boolean);
+  const localizations = Object.values(config.commands.ticketAdmin?.nameLocalizations || {}).map((l) => sanitizeCommandName(l)).filter(Boolean);
   const defaults = ['ticket-admin', 'ticketadmin', 'destek-admin', 'destek-yonetim'];
 
   return n === primary || aliases.includes(n) || localizations.includes(n) || defaults.includes(n);

@@ -393,6 +393,6 @@ export function sanitizeCommandName(raw: string): string {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-_\p{L}\p{N}]/gu, '')
+    .replace(/[^a-z0-9_\-\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]/gu, '')
     .slice(0, 32);
 }

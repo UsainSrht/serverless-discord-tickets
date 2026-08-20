@@ -482,7 +482,16 @@ export function buildApplicationCommands(
       config.commands.ticket?.nameLocalizations &&
       Object.keys(config.commands.ticket.nameLocalizations).length > 0
     ) {
-      cmd.name_localizations = config.commands.ticket.nameLocalizations;
+      const sanitizedLocs: Record<string, string> = {};
+      for (const [loc, val] of Object.entries(
+        config.commands.ticket.nameLocalizations,
+      )) {
+        const sanitized = sanitizeCommandName(val);
+        if (sanitized) sanitizedLocs[loc] = sanitized;
+      }
+      if (Object.keys(sanitizedLocs).length > 0) {
+        cmd.name_localizations = sanitizedLocs;
+      }
     }
     if (
       config.commands.ticket?.descriptionLocalizations &&
@@ -543,7 +552,16 @@ export function buildApplicationCommands(
       config.commands.ticketAdmin?.nameLocalizations &&
       Object.keys(config.commands.ticketAdmin.nameLocalizations).length > 0
     ) {
-      cmd.name_localizations = config.commands.ticketAdmin.nameLocalizations;
+      const sanitizedLocs: Record<string, string> = {};
+      for (const [loc, val] of Object.entries(
+        config.commands.ticketAdmin.nameLocalizations,
+      )) {
+        const sanitized = sanitizeCommandName(val);
+        if (sanitized) sanitizedLocs[loc] = sanitized;
+      }
+      if (Object.keys(sanitizedLocs).length > 0) {
+        cmd.name_localizations = sanitizedLocs;
+      }
     }
     if (
       config.commands.ticketAdmin?.descriptionLocalizations &&
