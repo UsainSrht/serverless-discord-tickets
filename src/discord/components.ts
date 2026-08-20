@@ -97,12 +97,22 @@ export function buildTicketOpenedPayload(
 export function buildTicketClosedPayload(
   config: BotConfig,
   channelId?: string,
+  closedByUserId?: string,
 ): DiscordMessagePayload {
+  const userMention = closedByUserId ? `<@${closedByUserId}>` : '';
+  const rawTemplate =
+    config.embeds.ticketClosed.descriptionTemplate ??
+    config.embeds.ticketClosed.description ??
+    '';
+  const description = rawTemplate
+    .replace('{user}', userMention)
+    .replace('{closed_by}', userMention);
+
   const payload: DiscordMessagePayload = {
     embeds: [
       {
         title: config.embeds.ticketClosed.title,
-        description: config.embeds.ticketClosed.description,
+        description,
         color: config.embeds.ticketClosed.color,
       },
     ],

@@ -43,7 +43,8 @@ export interface BotConfig {
     };
     ticketClosed: {
       title: string;
-      description: string;
+      descriptionTemplate?: string;
+      description?: string;
       color: number;
     };
   };
@@ -155,8 +156,8 @@ export const defaultConfig: BotConfig = {
     },
     ticketClosed: {
       title: '🔒 Ticket Closed',
-      description:
-        'This ticket has been closed and archived. Thank you for contacting support.',
+      descriptionTemplate:
+        'Closed by {user}\n\nThis ticket has been closed and archived. Thank you for contacting support.',
       color: 0xed4245,
     },
   },

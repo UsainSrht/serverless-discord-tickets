@@ -12,7 +12,7 @@
     },
     "ticketClosed": {
       "title": "Resolved",
-      "description": "This ticket is now closed. Reach out anytime if you need more help.",
+      "descriptionTemplate": "Closed by {user}\n\nThis ticket is now closed. Reach out anytime if you need more help.",
       "color": 15548997
     }
   },

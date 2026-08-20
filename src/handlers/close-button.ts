@@ -120,12 +120,16 @@ export async function runTicketClose(ctx: HandlerContext): Promise<void> {
       await editChannelMessage(env, channelId, openingMessageId, {
         components: buildDeleteTicketButtonRow(config, channelId),
       });
-      await sendChannelMessage(env, channelId, buildTicketClosedPayload(config));
+      await sendChannelMessage(
+        env,
+        channelId,
+        buildTicketClosedPayload(config, undefined, actorUserId),
+      );
     } else {
       await sendChannelMessage(
         env,
         channelId,
-        buildTicketClosedPayload(config, channelId),
+        buildTicketClosedPayload(config, channelId, actorUserId),
       );
     }
 
