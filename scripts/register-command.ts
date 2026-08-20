@@ -9,6 +9,7 @@
  */
 
 import { loadConfig, type ConfigEnv } from '../src/config';
+import { buildApplicationCommands } from '../src/discord/api';
 import { loadDevVars } from './load-dev-vars';
 
 loadDevVars();
@@ -39,35 +40,7 @@ if (!token || !applicationId) {
   process.exit(1);
 }
 
-const commands = [
-  {
-    name: config.commands.ticket?.name || 'ticket',
-    description: config.commands.ticket?.description || 'Open a support ticket',
-    type: 1,
-    dm_permission: false,
-  },
-  {
-    name: config.commands.ticketAdmin?.name || 'ticket-admin',
-    description:
-      config.commands.ticketAdmin?.description ||
-      'Manage support tickets and customize bot settings (Admin only)',
-    type: 1,
-    default_member_permissions: '8',
-    dm_permission: false,
-    options: [
-      {
-        name: 'panel',
-        description: 'Post the ticket creation panel in this channel',
-        type: 1,
-      },
-      {
-        name: 'customize',
-        description: 'Generate a 10-minute link to customize bot settings in the Web UI',
-        type: 1,
-      },
-    ],
-  },
-];
+const commands = buildApplicationCommands(config);
 
 async function registerCommands(): Promise<void> {
   const url = guildId

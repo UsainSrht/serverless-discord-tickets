@@ -1,5 +1,10 @@
 import { loadGuildConfig, type BotConfig, type DeepPartial } from '../config';
-import { getGuildChannels, getGuildDetails, getGuildRoles } from '../discord/api';
+import {
+  getGuildChannels,
+  getGuildDetails,
+  getGuildRoles,
+  syncGuildCommands,
+} from '../discord/api';
 import { getKV, type Env } from '../env';
 import type { ConfigSessionData } from '../types';
 import { renderDashboardHtml, renderExpiredHtml } from './html';
@@ -10,7 +15,8 @@ export function isWebRequest(url: URL): boolean {
     path === '/customize' ||
     path === '/config' ||
     path === '/api/session-data' ||
-    path === '/api/config'
+    path === '/api/config' ||
+    path === '/api/sync-commands'
   );
 }
 
@@ -154,8 +160,32 @@ export async function handleWebRequest(
 
       await kv.put(`guild_config:${session.guildId}`, JSON.stringify(body));
 
+      let commandsSynced = false;
+      let syncError: string | undefined;
+
+      // Automatically sync guild slash commands with Discord if credentials exist
+      if (env.DISCORD_APPLICATION_ID && env.DISCORD_TOKEN) {
+        try {
+          const effectiveConfig = await loadGuildConfig(env, session.guildId);
+          await syncGuildCommands(env, session.guildId, effectiveConfig);
+          commandsSynced = true;
+        } catch (syncErr) {
+          console.warn(
+            `Guild commands sync warning for guild ${session.guildId}:`,
+            syncErr,
+          );
+          syncError =
+            syncErr instanceof Error ? syncErr.message : String(syncErr);
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: true, guildId: session.guildId }),
+        JSON.stringify({
+          success: true,
+          guildId: session.guildId,
+          commandsSynced,
+          syncError,
+        }),
         {
           status: 200,
           headers: {
@@ -168,6 +198,45 @@ export async function handleWebRequest(
       console.error('Error saving guild config:', error);
       return new Response(
         JSON.stringify({ error: 'Failed to save configuration.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+  }
+
+  // Handle API: POST /api/sync-commands
+  if (path === '/api/sync-commands') {
+    if (request.method !== 'POST') {
+      return new Response('Method Not Allowed', { status: 405 });
+    }
+
+    try {
+      const config = await loadGuildConfig(env, session.guildId);
+      const registered = await syncGuildCommands(env, session.guildId, config);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          guildId: session.guildId,
+          count: registered.length,
+          commands: registered,
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          },
+        },
+      );
+    } catch (error) {
+      console.error('Error syncing guild commands:', error);
+      return new Response(
+        JSON.stringify({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to sync commands with Discord.',
+        }),
         { status: 500, headers: { 'Content-Type': 'application/json' } },
       );
     }

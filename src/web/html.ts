@@ -572,6 +572,80 @@ export function renderDashboardHtml(token: string): string {
     .discord-btn.style-3 { background-color: var(--green); color: #000; } /* Success */
     .discord-btn.style-4 { background-color: var(--red); } /* Danger */
 
+    /* Command Aliases & Localizations */
+    .alias-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      min-height: 24px;
+    }
+
+    .alias-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-darker);
+      border: 1px solid rgba(88, 101, 242, 0.4);
+      color: var(--blurple);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .loc-table {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      margin-bottom: 12px;
+    }
+
+    .loc-row {
+      display: grid;
+      grid-template-columns: 170px 1fr 1.5fr 36px;
+      gap: 8px;
+      align-items: center;
+      background-color: var(--bg-darker);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    @media (max-width: 768px) {
+      .loc-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-icon-danger {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(237, 66, 69, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(237, 66, 69, 0.3);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      transition: var(--transition);
+    }
+
+    .btn-icon-danger:hover {
+      background-color: var(--red);
+      color: #fff;
+    }
+
     /* Toast Notification */
     .toast {
       position: fixed;
@@ -664,6 +738,7 @@ export function renderDashboardHtml(token: string): string {
     <main>
       <nav class="tabs-nav">
         <button class="tab-btn active" data-tab="general">⚙️ Setup & Mode</button>
+        <button class="tab-btn" data-tab="commands">⚡ Commands & Aliases</button>
         <button class="tab-btn" data-tab="categories">📂 Categories & Roles</button>
         <button class="tab-btn" data-tab="panel">🎫 Ticket Panel Embed</button>
         <button class="tab-btn" data-tab="welcome">📨 Welcome & Buttons</button>
@@ -695,7 +770,97 @@ export function renderDashboardHtml(token: string): string {
           </div>
         </section>
 
-        <!-- Tab 2: Categories & Roles -->
+        <!-- Tab 2: Commands & Aliases -->
+        <section id="tab-commands" class="tab-pane">
+          <div class="card">
+            <h2 class="card-title">⚡ User Ticket Slash Command</h2>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="cmdTicketName">Primary Command Name</label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-family: var(--font-mono); font-size: 16px; color: var(--text-muted);">/</span>
+                  <input type="text" id="cmdTicketName" class="form-control" placeholder="ticket" value="ticket" style="font-family: var(--font-mono);">
+                </div>
+                <div class="form-hint">E.g. <code>ticket</code>, <code>destek</code>, <code>support</code> (lowercase, 1-32 chars).</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="cmdTicketDesc">Command Description</label>
+                <input type="text" id="cmdTicketDesc" class="form-control" placeholder="Open a support ticket" value="Open a support ticket">
+                <div class="form-hint">Shown in Discord's slash command list.</div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px;">
+              <label class="form-label" for="cmdTicketAliases">Command Aliases (Multiple Slash Commands)</label>
+              <input type="text" id="cmdTicketAliases" class="form-control" placeholder="destek, talep, support, yardım">
+              <div class="form-hint">Comma-separated alias commands that open the ticket modal. Each alias is registered as a slash command in Discord.</div>
+              <div id="ticketAliasBadges" class="alias-tags"></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 18px;">
+              <label class="form-label">🌐 Native Discord Localizations (Language-Specific Names & Descriptions)</label>
+              <div class="form-hint" style="margin-bottom: 8px;">
+                Discord automatically displays these localized names to users depending on their Discord app language.
+              </div>
+              <div id="ticketLocTable" class="loc-table"></div>
+              <button type="button" class="btn btn-sm btn-gray" id="addTicketLocBtn">
+                <span>➕</span> Add Language Localization
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">🛡️ Admin Slash Command</h2>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="cmdAdminName">Primary Admin Command Name</label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-family: var(--font-mono); font-size: 16px; color: var(--text-muted);">/</span>
+                  <input type="text" id="cmdAdminName" class="form-control" placeholder="ticket-admin" value="ticket-admin" style="font-family: var(--font-mono);">
+                </div>
+                <div class="form-hint">E.g. <code>ticket-admin</code>, <code>destek-yonetim</code>, <code>support-admin</code>.</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="cmdAdminDesc">Admin Command Description</label>
+                <input type="text" id="cmdAdminDesc" class="form-control" placeholder="Manage support tickets and customize bot settings (Admin only)">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px;">
+              <label class="form-label" for="cmdAdminAliases">Admin Command Aliases</label>
+              <input type="text" id="cmdAdminAliases" class="form-control" placeholder="ticketadmin, destek-admin, destek-yonetim">
+              <div class="form-hint">Comma-separated aliases for the admin command (all include <code>panel</code> and <code>customize</code> subcommands).</div>
+              <div id="adminAliasBadges" class="alias-tags"></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 18px;">
+              <label class="form-label">🌐 Admin Command Localizations</label>
+              <div id="adminLocTable" class="loc-table"></div>
+              <button type="button" class="btn btn-sm btn-gray" id="addAdminLocBtn">
+                <span>➕</span> Add Admin Language Localization
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">🔄 Discord Slash Command Sync</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+              When you click <strong>Save Changes</strong>, custom commands, aliases, and localizations are automatically registered with Discord for this server. You can also sync immediately using the button below.
+            </p>
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-blurple" id="syncCommandsBtn">
+                <span>⚡</span> Sync Slash Commands to Discord Now
+              </button>
+              <div id="syncStatusMsg" style="font-size: 13px; font-weight: 500;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 3: Categories & Roles -->
         <section id="tab-categories" class="tab-pane">
           <div class="card">
             <h2 class="card-title">📂 Channels & Staff Roles</h2>
@@ -1123,6 +1288,128 @@ export function renderDashboardHtml(token: string): string {
       document.getElementById('threadModeSettings').style.display = isChannel ? 'none' : 'block';
     });
 
+    // Supported Discord Locales
+    const DISCORD_LOCALES = [
+      { code: 'tr', label: 'Turkish (Türkçe)' },
+      { code: 'en-US', label: 'English (US)' },
+      { code: 'en-GB', label: 'English (UK)' },
+      { code: 'de', label: 'German (Deutsch)' },
+      { code: 'fr', label: 'French (Français)' },
+      { code: 'es-ES', label: 'Spanish (Español)' },
+      { code: 'pt-BR', label: 'Portuguese (Português - Brasil)' },
+      { code: 'ru', label: 'Russian (Русский)' },
+      { code: 'it', label: 'Italian (Italiano)' },
+      { code: 'ja', label: 'Japanese (日本語)' },
+      { code: 'ko', label: 'Korean (한국어)' },
+      { code: 'zh-CN', label: 'Chinese (Simplified)' },
+      { code: 'zh-TW', label: 'Chinese (Traditional)' },
+      { code: 'nl', label: 'Dutch (Nederlands)' },
+      { code: 'pl', label: 'Polish (Polski)' },
+      { code: 'uk', label: 'Ukrainian (Українська)' },
+    ];
+
+    function sanitizeCommand(raw) {
+      if (!raw) return '';
+      return raw
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-_\p{L}\p{N}]/gu, '')
+        .slice(0, 32);
+    }
+
+    function parseAliases(raw) {
+      if (!raw) return [];
+      return raw
+        .split(',')
+        .map(s => sanitizeCommand(s))
+        .filter(Boolean);
+    }
+
+    function renderAliasBadges(inputId, containerId) {
+      const val = document.getElementById(inputId).value;
+      const aliases = parseAliases(val);
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      aliases.forEach(a => {
+        const badge = document.createElement('span');
+        badge.className = 'alias-badge';
+        badge.textContent = '/' + a;
+        container.appendChild(badge);
+      });
+    }
+
+    function createLocRow(container, locale = 'tr', nameVal = '', descVal = '') {
+      const row = document.createElement('div');
+      row.className = 'loc-row';
+
+      const select = document.createElement('select');
+      select.className = 'form-control loc-locale-select';
+      DISCORD_LOCALES.forEach(l => {
+        const opt = new Option(l.label, l.code);
+        if (l.code === locale) opt.selected = true;
+        select.add(opt);
+      });
+
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'form-control loc-name-input';
+      nameInput.placeholder = 'Localized Name (e.g. destek)';
+      nameInput.value = nameVal;
+
+      const descInput = document.createElement('input');
+      descInput.type = 'text';
+      descInput.className = 'form-control loc-desc-input';
+      descInput.placeholder = 'Localized Description';
+      descInput.value = descVal;
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon-danger';
+      delBtn.innerHTML = '🗑️';
+      delBtn.title = 'Remove localization';
+      delBtn.addEventListener('click', () => row.remove());
+
+      row.appendChild(select);
+      row.appendChild(nameInput);
+      row.appendChild(descInput);
+      row.appendChild(delBtn);
+
+      container.appendChild(row);
+    }
+
+    function collectLocalizations(containerId, field) {
+      const container = document.getElementById(containerId);
+      const res = {};
+      if (!container) return res;
+      container.querySelectorAll('.loc-row').forEach(row => {
+        const locale = row.querySelector('.loc-locale-select').value;
+        const nameVal = sanitizeCommand(row.querySelector('.loc-name-input').value);
+        const descVal = row.querySelector('.loc-desc-input').value.trim();
+
+        if (field === 'name' && nameVal) {
+          res[locale] = nameVal;
+        } else if (field === 'desc' && descVal) {
+          res[locale] = descVal;
+        }
+      });
+      return res;
+    }
+
+    document.getElementById('cmdTicketAliases').addEventListener('input', () => {
+      renderAliasBadges('cmdTicketAliases', 'ticketAliasBadges');
+    });
+    document.getElementById('cmdAdminAliases').addEventListener('input', () => {
+      renderAliasBadges('cmdAdminAliases', 'adminAliasBadges');
+    });
+
+    document.getElementById('addTicketLocBtn').addEventListener('click', () => {
+      createLocRow(document.getElementById('ticketLocTable'));
+    });
+    document.getElementById('addAdminLocBtn').addEventListener('click', () => {
+      createLocRow(document.getElementById('adminLocTable'));
+    });
+
     // Toast
     function showToast(msg, isSuccess = true) {
       const toast = document.getElementById('toast');
@@ -1131,7 +1418,7 @@ export function renderDashboardHtml(token: string): string {
       document.getElementById('toastMsg').textContent = msg;
       setTimeout(() => {
         toast.className = 'toast';
-      }, 4000);
+      }, 4500);
     }
 
     // Timer Countdown
@@ -1232,6 +1519,50 @@ export function renderDashboardHtml(token: string): string {
       document.getElementById('channelModeSettings').style.display = isChannel ? 'block' : 'none';
       document.getElementById('threadModeSettings').style.display = isChannel ? 'none' : 'block';
 
+      // Commands fields
+      const ticketCmd = cfg.commands?.ticket || {};
+      const adminCmd = cfg.commands?.ticketAdmin || {};
+
+      document.getElementById('cmdTicketName').value = ticketCmd.name || 'ticket';
+      document.getElementById('cmdTicketDesc').value = ticketCmd.description || 'Open a support ticket';
+      document.getElementById('cmdTicketAliases').value = (ticketCmd.aliases || []).join(', ');
+      renderAliasBadges('cmdTicketAliases', 'ticketAliasBadges');
+
+      const ticketLocTable = document.getElementById('ticketLocTable');
+      ticketLocTable.innerHTML = '';
+      const ticketLocales = new Set([
+        ...Object.keys(ticketCmd.nameLocalizations || {}),
+        ...Object.keys(ticketCmd.descriptionLocalizations || {}),
+      ]);
+      ticketLocales.forEach(loc => {
+        createLocRow(
+          ticketLocTable,
+          loc,
+          ticketCmd.nameLocalizations?.[loc] || '',
+          ticketCmd.descriptionLocalizations?.[loc] || '',
+        );
+      });
+
+      document.getElementById('cmdAdminName').value = adminCmd.name || 'ticket-admin';
+      document.getElementById('cmdAdminDesc').value = adminCmd.description || 'Manage support tickets and customize bot settings (Admin only)';
+      document.getElementById('cmdAdminAliases').value = (adminCmd.aliases || []).join(', ');
+      renderAliasBadges('cmdAdminAliases', 'adminAliasBadges');
+
+      const adminLocTable = document.getElementById('adminLocTable');
+      adminLocTable.innerHTML = '';
+      const adminLocales = new Set([
+        ...Object.keys(adminCmd.nameLocalizations || {}),
+        ...Object.keys(adminCmd.descriptionLocalizations || {}),
+      ]);
+      adminLocales.forEach(loc => {
+        createLocRow(
+          adminLocTable,
+          loc,
+          adminCmd.nameLocalizations?.[loc] || '',
+          adminCmd.descriptionLocalizations?.[loc] || '',
+        );
+      });
+
       // Panel fields
       document.getElementById('panelTitle').value = cfg.embeds?.ticketPanel?.title || '';
       document.getElementById('panelDesc').value = cfg.embeds?.ticketPanel?.description || '';
@@ -1300,7 +1631,7 @@ export function renderDashboardHtml(token: string): string {
     document.getElementById('saveBtn').addEventListener('click', async () => {
       const saveBtn = document.getElementById('saveBtn');
       saveBtn.disabled = true;
-      saveBtn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;"></div> Saving…';
+      saveBtn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Saving…';
 
       const payload = {
         TICKET_MODE: document.getElementById('ticketMode').value,
@@ -1310,6 +1641,22 @@ export function renderDashboardHtml(token: string): string {
           THREAD_CHANNEL_ID: document.getElementById('threadChannel').value,
           STAFF_ROLE_IDS: Array.from(selectedRoles),
           MAX_OPEN_TICKETS_PER_USER: parseInt(document.getElementById('maxTickets').value, 10) || 1,
+        },
+        commands: {
+          ticket: {
+            name: sanitizeCommand(document.getElementById('cmdTicketName').value || 'ticket'),
+            description: document.getElementById('cmdTicketDesc').value || 'Open a support ticket',
+            aliases: parseAliases(document.getElementById('cmdTicketAliases').value),
+            nameLocalizations: collectLocalizations('ticketLocTable', 'name'),
+            descriptionLocalizations: collectLocalizations('ticketLocTable', 'desc'),
+          },
+          ticketAdmin: {
+            name: sanitizeCommand(document.getElementById('cmdAdminName').value || 'ticket-admin'),
+            description: document.getElementById('cmdAdminDesc').value || 'Manage support tickets and customize bot settings (Admin only)',
+            aliases: parseAliases(document.getElementById('cmdAdminAliases').value),
+            nameLocalizations: collectLocalizations('adminLocTable', 'name'),
+            descriptionLocalizations: collectLocalizations('adminLocTable', 'desc'),
+          },
         },
         embeds: {
           ticketPanel: {
@@ -1377,13 +1724,52 @@ export function renderDashboardHtml(token: string): string {
           const err = await res.json();
           showToast(err.error || 'Failed to save changes', false);
         } else {
-          showToast('Configuration saved successfully for this server!');
+          const result = await res.json();
+          if (result.commandsSynced) {
+            showToast('Saved & slash commands synced with Discord!');
+          } else if (result.syncError) {
+            showToast('Saved (Discord sync warning: ' + result.syncError + ')', false);
+          } else {
+            showToast('Configuration saved successfully for this server!');
+          }
         }
       } catch (error) {
         showToast('Network error while saving', false);
       } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<span>💾</span> Save Changes';
+      }
+    });
+
+    // Manual Discord Slash Command Sync Button
+    document.getElementById('syncCommandsBtn').addEventListener('click', async () => {
+      const syncBtn = document.getElementById('syncCommandsBtn');
+      const statusMsg = document.getElementById('syncStatusMsg');
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Syncing with Discord…';
+      statusMsg.textContent = '';
+
+      try {
+        const res = await fetch('/api/sync-commands?token=' + encodeURIComponent(TOKEN), {
+          method: 'POST',
+        });
+        const data = await res.json();
+        if (res.ok) {
+          statusMsg.style.color = 'var(--green)';
+          statusMsg.textContent = '✅ Synced ' + data.count + ' slash command(s) with Discord!';
+          showToast('Successfully synced ' + data.count + ' slash command(s) with Discord!');
+        } else {
+          statusMsg.style.color = 'var(--red)';
+          statusMsg.textContent = '❌ ' + (data.error || 'Failed to sync');
+          showToast(data.error || 'Sync failed', false);
+        }
+      } catch (err) {
+        statusMsg.style.color = 'var(--red)';
+        statusMsg.textContent = '❌ Network error';
+        showToast('Network error while syncing', false);
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = '<span>⚡</span> Sync Slash Commands to Discord Now';
       }
     });
 

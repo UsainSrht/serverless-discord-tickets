@@ -5,6 +5,14 @@
 
 export type TicketMode = 'channel' | 'thread';
 
+export interface CommandConfig {
+  name: string;
+  description: string;
+  aliases?: string[];
+  nameLocalizations?: Record<string, string>;
+  descriptionLocalizations?: Record<string, string>;
+}
+
 export interface BotConfig {
   TICKET_MODE: TicketMode;
 
@@ -17,14 +25,8 @@ export interface BotConfig {
   };
 
   commands: {
-    ticket: {
-      name: string;
-      description: string;
-    };
-    ticketAdmin?: {
-      name: string;
-      description: string;
-    };
+    ticket: CommandConfig;
+    ticketAdmin?: CommandConfig;
   };
 
   customIds: {
@@ -137,10 +139,16 @@ export const defaultConfig: BotConfig = {
     ticket: {
       name: 'ticket',
       description: 'Open a support ticket',
+      aliases: [],
+      nameLocalizations: {},
+      descriptionLocalizations: {},
     },
     ticketAdmin: {
       name: 'ticket-admin',
       description: 'Manage support tickets and customize bot settings (Admin only)',
+      aliases: ['ticketadmin'],
+      nameLocalizations: {},
+      descriptionLocalizations: {},
     },
   },
 
@@ -375,4 +383,14 @@ export function sanitizeChannelName(raw: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 100);
+}
+
+/** Sanitize a Discord slash command name (lowercase, no spaces, 1-32 chars, unicode safe). */
+export function sanitizeCommandName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-_\p{L}\p{N}]/gu, '')
+    .slice(0, 32);
 }

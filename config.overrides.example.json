@@ -1,4 +1,24 @@
 {
+  "commands": {
+    "ticket": {
+      "name": "destek",
+      "description": "Destek talebi oluşturun",
+      "aliases": ["ticket", "talep", "support"],
+      "nameLocalizations": {
+        "tr": "destek",
+        "en-US": "ticket"
+      },
+      "descriptionLocalizations": {
+        "tr": "Destek talebi oluşturun",
+        "en-US": "Open a support ticket"
+      }
+    },
+    "ticketAdmin": {
+      "name": "destek-yonetim",
+      "description": "Destek sistemi ayarlarını yönetin (Yönetici)",
+      "aliases": ["ticket-admin", "ticketadmin"]
+    }
+  },
   "embeds": {
     "ticketPanel": {
       "title": "🎫 My Server Support",

@@ -1,4 +1,4 @@
-import type { BotConfig } from '../config';
+import { sanitizeCommandName, type BotConfig } from '../config';
 import {
   DISCORD_API_BASE,
   PermissionFlags,
@@ -10,6 +10,8 @@ import {
   ChannelType,
   OverwriteType,
   type DiscordAPIErrorBody,
+  type DiscordApplicationCommandOption,
+  type DiscordApplicationCommandPayload,
   type DiscordChannel,
   type DiscordGuild,
   type DiscordMessagePayload,
@@ -458,3 +460,142 @@ export async function getGuildDetails(
 ): Promise<DiscordGuild> {
   return discordJson<DiscordGuild>(env, `/guilds/${guildId}`);
 }
+
+export function buildApplicationCommands(
+  config: BotConfig,
+): DiscordApplicationCommandPayload[] {
+  const commands: DiscordApplicationCommandPayload[] = [];
+  const registeredNames = new Set<string>();
+
+  // 1. Primary ticket command
+  const ticketName = sanitizeCommandName(config.commands.ticket?.name || 'ticket');
+  if (ticketName) {
+    registeredNames.add(ticketName);
+    const cmd: DiscordApplicationCommandPayload = {
+      name: ticketName,
+      description:
+        config.commands.ticket?.description || 'Open a support ticket',
+      type: 1,
+      dm_permission: false,
+    };
+    if (
+      config.commands.ticket?.nameLocalizations &&
+      Object.keys(config.commands.ticket.nameLocalizations).length > 0
+    ) {
+      cmd.name_localizations = config.commands.ticket.nameLocalizations;
+    }
+    if (
+      config.commands.ticket?.descriptionLocalizations &&
+      Object.keys(config.commands.ticket.descriptionLocalizations).length > 0
+    ) {
+      cmd.description_localizations =
+        config.commands.ticket.descriptionLocalizations;
+    }
+    commands.push(cmd);
+  }
+
+  // 2. Ticket command aliases
+  const ticketAliases = config.commands.ticket?.aliases || [];
+  for (const rawAlias of ticketAliases) {
+    const alias = sanitizeCommandName(rawAlias);
+    if (!alias || registeredNames.has(alias)) continue;
+    registeredNames.add(alias);
+    commands.push({
+      name: alias,
+      description:
+        config.commands.ticket?.description || 'Open a support ticket',
+      type: 1,
+      dm_permission: false,
+    });
+  }
+
+  // 3. Primary ticket admin command
+  const adminName = sanitizeCommandName(
+    config.commands.ticketAdmin?.name || 'ticket-admin',
+  );
+  const adminOptions: DiscordApplicationCommandOption[] = [
+    {
+      name: 'panel',
+      description: 'Post the ticket creation panel in this channel',
+      type: 1,
+    },
+    {
+      name: 'customize',
+      description:
+        'Generate a 10-minute link to customize bot settings in the Web UI',
+      type: 1,
+    },
+  ];
+
+  if (adminName && !registeredNames.has(adminName)) {
+    registeredNames.add(adminName);
+    const cmd: DiscordApplicationCommandPayload = {
+      name: adminName,
+      description:
+        config.commands.ticketAdmin?.description ||
+        'Manage support tickets and customize bot settings (Admin only)',
+      type: 1,
+      default_member_permissions: '8',
+      dm_permission: false,
+      options: adminOptions,
+    };
+    if (
+      config.commands.ticketAdmin?.nameLocalizations &&
+      Object.keys(config.commands.ticketAdmin.nameLocalizations).length > 0
+    ) {
+      cmd.name_localizations = config.commands.ticketAdmin.nameLocalizations;
+    }
+    if (
+      config.commands.ticketAdmin?.descriptionLocalizations &&
+      Object.keys(config.commands.ticketAdmin.descriptionLocalizations).length > 0
+    ) {
+      cmd.description_localizations =
+        config.commands.ticketAdmin.descriptionLocalizations;
+    }
+    commands.push(cmd);
+  }
+
+  // 4. Ticket admin aliases
+  const adminAliases = config.commands.ticketAdmin?.aliases || [];
+  for (const rawAlias of adminAliases) {
+    const alias = sanitizeCommandName(rawAlias);
+    if (!alias || registeredNames.has(alias)) continue;
+    registeredNames.add(alias);
+    commands.push({
+      name: alias,
+      description:
+        config.commands.ticketAdmin?.description ||
+        'Manage support tickets and customize bot settings (Admin only)',
+      type: 1,
+      default_member_permissions: '8',
+      dm_permission: false,
+      options: adminOptions,
+    });
+  }
+
+  return commands;
+}
+
+export async function syncGuildCommands(
+  env: Env,
+  guildId: string,
+  config: BotConfig,
+): Promise<DiscordApplicationCommandPayload[]> {
+  const applicationId = env.DISCORD_APPLICATION_ID?.trim();
+  if (!applicationId || !env.DISCORD_TOKEN?.trim()) {
+    throw new Error(
+      'Missing DISCORD_APPLICATION_ID or DISCORD_TOKEN in environment.',
+    );
+  }
+
+  const commands = buildApplicationCommands(config);
+  return discordJson<DiscordApplicationCommandPayload[]>(
+    env,
+    `/applications/${applicationId}/guilds/${guildId}/commands`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(commands),
+    },
+  );
+}
+

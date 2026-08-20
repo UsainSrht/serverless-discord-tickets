@@ -30,6 +30,28 @@ export interface DiscordGuild {
   description?: string | null;
 }
 
+export interface DiscordApplicationCommandOption {
+  name: string;
+  description: string;
+  type: number;
+  required?: boolean;
+  choices?: Array<{ name: string; value: string | number }>;
+  options?: DiscordApplicationCommandOption[];
+  name_localizations?: Record<string, string>;
+  description_localizations?: Record<string, string>;
+}
+
+export interface DiscordApplicationCommandPayload {
+  name: string;
+  description: string;
+  type: number;
+  default_member_permissions?: string;
+  dm_permission?: boolean;
+  options?: DiscordApplicationCommandOption[];
+  name_localizations?: Record<string, string>;
+  description_localizations?: Record<string, string>;
+}
+
 export interface ApplicationCommandInteractionDataOption {
   name: string;
   type: number;

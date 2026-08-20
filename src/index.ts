@@ -1,4 +1,4 @@
-import { loadGuildConfig } from './config';
+import { loadGuildConfig, type BotConfig } from './config';
 import type { Env } from './env';
 import { handleCloseTicketButton, runTicketClose } from './handlers/close-button';
 import { handleDeleteTicketButton, runTicketDelete } from './handlers/delete-button';
@@ -10,6 +10,28 @@ import { messageResponse, pongResponse } from './responses';
 import { InteractionType, type APIInteraction } from './types';
 import { normalizePublicKey, verifyDiscordRequest } from './verify';
 import { handleWebRequest, isWebRequest } from './web/router';
+
+function matchesTicketCommand(name: string | undefined, config: BotConfig): boolean {
+  if (!name) return false;
+  const n = name.toLowerCase();
+  const primary = config.commands.ticket?.name?.toLowerCase();
+  const aliases = (config.commands.ticket?.aliases || []).map((a) => a.toLowerCase());
+  const localizations = Object.values(config.commands.ticket?.nameLocalizations || {}).map((l) => l.toLowerCase());
+  const defaults = ['ticket', 'tickets', 'destek'];
+
+  return n === primary || aliases.includes(n) || localizations.includes(n) || defaults.includes(n);
+}
+
+function matchesTicketAdminCommand(name: string | undefined, config: BotConfig): boolean {
+  if (!name) return false;
+  const n = name.toLowerCase();
+  const primary = config.commands.ticketAdmin?.name?.toLowerCase();
+  const aliases = (config.commands.ticketAdmin?.aliases || []).map((a) => a.toLowerCase());
+  const localizations = Object.values(config.commands.ticketAdmin?.nameLocalizations || {}).map((l) => l.toLowerCase());
+  const defaults = ['ticket-admin', 'ticketadmin', 'destek-admin', 'destek-yonetim'];
+
+  return n === primary || aliases.includes(n) || localizations.includes(n) || defaults.includes(n);
+}
 
 function healthResponse(env: Env): Response {
   const publicKey = normalizePublicKey(env.DISCORD_PUBLIC_KEY);
@@ -85,12 +107,8 @@ export default {
         case InteractionType.ApplicationCommand: {
           const commandName = interaction.data?.name;
           if (
-            commandName === config.commands.ticket?.name ||
-            commandName === 'ticket' ||
-            commandName === config.commands.ticketAdmin?.name ||
-            commandName === 'ticket-admin' ||
-            commandName === 'ticketadmin' ||
-            commandName === 'tickets'
+            matchesTicketCommand(commandName, config) ||
+            matchesTicketAdminCommand(commandName, config)
           ) {
             return handleTicketCommand(handlerCtx);
           }
