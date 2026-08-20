@@ -1,6 +1,7 @@
 import { getKV, PermissionFlags, type HandlerContext } from '../env';
 import { ephemeralPayloadResponse, messageResponse } from '../responses';
-import type { DiscordMessagePayload } from '../types';
+import type { ConfigSessionData, DiscordMessagePayload } from '../types';
+import { createSessionToken } from '../web/session';
 
 export function isMemberAdmin(ctx: HandlerContext): boolean {
   const permissions = ctx.interaction.member?.permissions;
@@ -33,37 +34,38 @@ export async function handleCustomizeCommand(
     );
   }
 
-  const kv = getKV(ctx.env);
-  if (!kv) {
-    return messageResponse(
-      '⚠️ Cloudflare KV is not configured on this Worker.\n' +
-        'Please bind `TICKETS_KV` in `wrangler.toml` to enable the Web UI dashboard.',
-      true,
-    );
-  }
-
-  const token = crypto.randomUUID();
-  const expiresAt = Date.now() + 600 * 1000;
   const userId =
     ctx.interaction.member?.user?.id ?? ctx.interaction.user?.id ?? '';
+  const now = Date.now();
+  const expiresAt = now + 600 * 1000; // 10 minutes
 
+  const sessionData: ConfigSessionData = {
+    guildId,
+    userId,
+    createdAt: now,
+    expiresAt,
+  };
+
+  let token: string;
   try {
-    await kv.put(
-      `session:${token}`,
-      JSON.stringify({
-        guildId,
-        userId,
-        createdAt: Date.now(),
-        expiresAt,
-      }),
-      { expirationTtl: 600 },
-    );
+    token = await createSessionToken(sessionData, ctx.env);
   } catch (error) {
-    console.error('Failed to create KV session token:', error);
-    return messageResponse(
-      'Failed to generate customization session. Please check your KV configuration.',
-      true,
-    );
+    console.error('Failed to generate signed session token:', error);
+    token = crypto.randomUUID();
+  }
+
+  // Dual-write to KV if available (for tracking/legacy lookup)
+  const kv = getKV(ctx.env);
+  if (kv) {
+    try {
+      await kv.put(
+        `session:${token}`,
+        JSON.stringify(sessionData),
+        { expirationTtl: 600 },
+      );
+    } catch (kvError) {
+      console.warn('Failed to store session in KV (stateless token will still work):', kvError);
+    }
   }
 
   let baseUrl = ctx.env.WORKER_URL?.trim().replace(/\/+$/, '');
@@ -75,7 +77,7 @@ export async function handleCustomizeCommand(
     baseUrl = '';
   }
 
-  const customizeUrl = `${baseUrl}/customize?token=${token}`;
+  const customizeUrl = `${baseUrl}/customize?token=${encodeURIComponent(token)}`;
 
   const payload: DiscordMessagePayload = {
     embeds: [

@@ -6,11 +6,16 @@ import {
   syncGuildCommands,
 } from '../discord/api';
 import { getKV, type Env } from '../env';
-import type { ConfigSessionData } from '../types';
 import { renderDashboardHtml, renderExpiredHtml } from './html';
+import { verifySessionToken } from './session';
+
+const NO_CACHE_HEADERS: Record<string, string> = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  Pragma: 'no-cache',
+};
 
 export function isWebRequest(url: URL): boolean {
-  const path = url.pathname;
+  const path = url.pathname.replace(/\/+$/, '') || '/';
   return (
     path === '/customize' ||
     path === '/config' ||
@@ -25,66 +30,71 @@ export async function handleWebRequest(
   env: Env,
 ): Promise<Response> {
   const url = new URL(request.url);
-  const path = url.pathname;
+  const path = url.pathname.replace(/\/+$/, '') || '/';
   const token = url.searchParams.get('token')?.trim();
-  const kv = getKV(env);
-
-  if (!kv) {
-    if (path.startsWith('/api/')) {
-      return new Response(
-        JSON.stringify({
-          error:
-            'TICKETS_KV is not configured. Please bind a KV namespace in wrangler.toml.',
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    return new Response(
-      renderExpiredHtml(
-        'TICKETS_KV is not configured in Cloudflare Workers. Please bind a KV namespace in wrangler.toml.',
-      ),
-      { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-    );
-  }
 
   if (!token) {
     if (path.startsWith('/api/')) {
       return new Response(
         JSON.stringify({ error: 'Missing session token.' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } },
+        {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
       );
     }
     return new Response(
-      renderExpiredHtml('Missing session token. Please use the link provided by /ticket-admin customize in Discord.'),
-      { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+      renderExpiredHtml(
+        'Missing session token. Please use the link provided by /ticket-admin customize in Discord.',
+        'Missing Session Token',
+      ),
+      {
+        status: 400,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          ...NO_CACHE_HEADERS,
+        },
+      },
     );
   }
 
-  const rawSession = await kv.get(`session:${token}`);
-  if (!rawSession) {
+  // Verify session statelessly via HMAC-SHA256 (0ms delay) or fallback to KV
+  const session = await verifySessionToken(token, env);
+  if (!session) {
     if (path.startsWith('/api/')) {
       return new Response(
-        JSON.stringify({ error: 'This session has expired or is invalid.' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } },
+        JSON.stringify({
+          error:
+            'This session has expired or is invalid. Please run /ticket-admin customize in Discord to generate a new 10-minute link.',
+        }),
+        {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
       );
     }
     return new Response(
-      renderExpiredHtml('This 10-minute link has expired or does not exist.'),
-      { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+      renderExpiredHtml(
+        'This 10-minute link has expired or is invalid. Please run /ticket-admin customize in Discord to generate a new link.',
+        'Session Expired or Invalid',
+      ),
+      {
+        status: 401,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          ...NO_CACHE_HEADERS,
+        },
+      },
     );
   }
 
-  let session: ConfigSessionData;
-  try {
-    session = JSON.parse(rawSession) as ConfigSessionData;
-  } catch {
-    return new Response(
-      renderExpiredHtml('Corrupted session data. Please run /ticket-admin customize again.'),
-      { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-    );
-  }
-
-  // Handle Web Page
+  // Handle Web Page: GET /customize or /config
   if (path === '/customize' || path === '/config') {
     if (request.method !== 'GET') {
       return new Response('Method Not Allowed', { status: 405 });
@@ -93,7 +103,7 @@ export async function handleWebRequest(
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        ...NO_CACHE_HEADERS,
       },
     });
   }
@@ -109,7 +119,10 @@ export async function handleWebRequest(
         loadGuildConfig(env, session.guildId),
         getGuildChannels(env, session.guildId).catch(() => []),
         getGuildRoles(env, session.guildId).catch(() => []),
-        getGuildDetails(env, session.guildId).catch(() => ({ id: session.guildId, name: session.guildName || 'Discord Server' })),
+        getGuildDetails(env, session.guildId).catch(() => ({
+          id: session.guildId,
+          name: session.guildName || 'Discord Server',
+        })),
       ]);
 
       const now = Date.now();
@@ -130,15 +143,26 @@ export async function handleWebRequest(
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-store',
+            ...NO_CACHE_HEADERS,
           },
         },
       );
     } catch (error) {
       console.error('Error loading session data:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch Discord server data.' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
+        JSON.stringify({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to fetch Discord server data.',
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
       );
     }
   }
@@ -149,12 +173,35 @@ export async function handleWebRequest(
       return new Response('Method Not Allowed', { status: 405 });
     }
 
+    const kv = getKV(env);
+    if (!kv) {
+      return new Response(
+        JSON.stringify({
+          error:
+            'TICKETS_KV is not configured. Please bind a KV namespace in wrangler.toml or the Cloudflare Dashboard to save settings.',
+        }),
+        {
+          status: 503,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
+      );
+    }
+
     try {
       const body = (await request.json()) as DeepPartial<BotConfig>;
       if (!body || typeof body !== 'object') {
         return new Response(
           JSON.stringify({ error: 'Invalid JSON payload.' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } },
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...NO_CACHE_HEADERS,
+            },
+          },
         );
       }
 
@@ -190,15 +237,26 @@ export async function handleWebRequest(
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-store',
+            ...NO_CACHE_HEADERS,
           },
         },
       );
     } catch (error) {
       console.error('Error saving guild config:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to save configuration.' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
+        JSON.stringify({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to save configuration.',
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
       );
     }
   }
@@ -224,7 +282,7 @@ export async function handleWebRequest(
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-store',
+            ...NO_CACHE_HEADERS,
           },
         },
       );
@@ -237,10 +295,19 @@ export async function handleWebRequest(
               ? error.message
               : 'Failed to sync commands with Discord.',
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...NO_CACHE_HEADERS,
+          },
+        },
       );
     }
   }
 
-  return new Response('Not Found', { status: 404 });
+  return new Response('Not Found', {
+    status: 404,
+    headers: NO_CACHE_HEADERS,
+  });
 }

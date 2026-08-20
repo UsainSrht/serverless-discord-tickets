@@ -3,6 +3,8 @@
  * Customize via Cloudflare env vars + BOT_CONFIG_OVERRIDES (never commit your overrides).
  */
 
+import { getKV } from './env';
+
 export type TicketMode = 'channel' | 'thread';
 
 export interface CommandConfig {
@@ -348,13 +350,13 @@ export function loadConfig(env: ConfigEnv): BotConfig {
 
 /** Build effective config for a specific guild, incorporating KV overrides if present. */
 export async function loadGuildConfig(
-  env: ConfigEnv & { TICKETS_KV?: KVNamespace; TICKETS?: KVNamespace },
+  env: ConfigEnv & Record<string, unknown>,
   guildId?: string,
 ): Promise<BotConfig> {
   const baseConfig = loadConfig(env);
   if (!guildId) return baseConfig;
 
-  const kv = env.TICKETS_KV ?? env.TICKETS;
+  const kv = getKV(env);
   if (!kv) return baseConfig;
 
   try {

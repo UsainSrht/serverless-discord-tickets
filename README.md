@@ -131,30 +131,56 @@ npm install
 
 ### 3. Set Up Cloudflare KV
 
-The Web UI dashboard and per-server configurations require a Cloudflare KV namespace.
+The Web UI dashboard and per-server configurations require a Cloudflare KV namespace named `TICKETS_KV`.
 
-1. Log in to Wrangler with your Cloudflare account (if not already logged in):
-   ```bash
-   npx wrangler login
-   ```
-2. Create a KV namespace:
-   ```bash
-   npx wrangler kv:namespace create TICKETS_KV
-   ```
-3. Copy the output `id` and update your [wrangler.toml](file:///h:/IdeaProjects/serverless-discord-tickets/wrangler.toml):
-   ```toml
-   [[kv_namespaces]]
-   binding = "TICKETS_KV"
-   id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"
-   ```
+#### How to Create and Find Your KV Namespace ID:
+
+- **Method A — Via CLI (Recommended)**:
+  1. Log in to Wrangler:
+     ```bash
+     npx wrangler login
+     ```
+  2. Create the namespace:
+     ```bash
+     npx wrangler kv:namespace create TICKETS_KV
+     ```
+  3. Look at the terminal output. Wrangler will print a snippet like:
+     ```toml
+     [[kv_namespaces]]
+     binding = "TICKETS_KV"
+     id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     ```
+
+- **Method B — Via Cloudflare Dashboard**:
+  1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **KV**.
+  2. Click **Create Namespace** and name it `TICKETS_KV`.
+  3. In the list of KV namespaces, copy the **Namespace ID** for `TICKETS_KV` (a 32-character hexadecimal string).
+
+#### Bind the KV Namespace in `wrangler.toml`:
+
+Open [wrangler.toml](file:///h:/IdeaProjects/serverless-discord-tickets/wrangler.toml) in your editor and uncomment / update the `[[kv_namespaces]]` block:
+
+```toml
+[[kv_namespaces]]
+binding = "TICKETS_KV"
+id = "PASTE_YOUR_32_CHAR_KV_NAMESPACE_ID_HERE"
+```
+
+> [!TIP]
+> If you are deploying via Cloudflare Dashboard (Git integration) instead of CLI:
+> Go to your Worker in Cloudflare Dashboard → **Settings** → **Variables and Secrets** → **KV Namespace Bindings** → **Add Binding**:
+> - **Variable name**: `TICKETS_KV`
+> - **KV namespace**: Select your `TICKETS_KV` namespace.
 
 ---
 
 ### 4. Set Secrets & Deploy
 
+Before or during deployment, your worker needs your Discord bot credentials.
+
 #### Option A: Deploy via CLI (Wrangler)
 
-1. Set your Discord secrets on Cloudflare:
+1. Set your Discord secrets in Cloudflare:
    ```bash
    npx wrangler secret put DISCORD_TOKEN
    # Paste your Bot Token when prompted
@@ -165,76 +191,85 @@ The Web UI dashboard and per-server configurations require a Cloudflare KV names
    npx wrangler secret put DISCORD_APPLICATION_ID
    # Paste your Application ID when prompted
    ```
-2. Deploy the worker:
+2. Deploy the worker to Cloudflare:
    ```bash
    npm run deploy
    ```
-3. Wrangler will output your live Worker URL (e.g. `https://serverless-discord-tickets.your-subdomain.workers.dev`).
+3. Wrangler will print your live Worker URL (e.g. `https://serverless-discord-tickets.your-subdomain.workers.dev`). **Copy this URL.**
 
 #### Option B: Deploy via GitHub & Cloudflare Dashboard
 
-1. Push your repository to GitHub.
-2. In the [Cloudflare Dashboard](https://dash.cloudflare.com/), go to **Workers & Pages** → **Create** → **Pages / Workers** → **Connect to Git**.
-3. Set the build/deploy command to:
+1. Commit and push your code (with the updated `wrangler.toml`) to GitHub.
+2. In the [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Pages / Workers** → **Connect to Git**.
+3. Select your repository and set Deploy command:
    ```bash
    npx wrangler deploy --keep-vars
    ```
-4. Once deployed, go to your Worker's **Settings → Variables and Secrets → Secrets** and add:
+4. Once created, navigate to your Worker → **Settings** → **Variables and Secrets** → **Secrets**, and add:
    - `DISCORD_TOKEN`
    - `DISCORD_PUBLIC_KEY`
    - `DISCORD_APPLICATION_ID`
+5. Copy your Worker URL from the dashboard overview (e.g. `https://serverless-discord-tickets.your-subdomain.workers.dev`).
 
 ---
 
 ### 5. Set Discord Interactions Endpoint
 
-1. Go back to the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Select your application → **General Information**.
-3. Under **Interactions Endpoint URL**, paste your Cloudflare Worker URL:
+Discord needs to know where to send button clicks, slash commands, and modal submissions.
+
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and select your application.
+2. Under **General Information**, find **Interactions Endpoint URL**.
+3. Paste your live Cloudflare Worker URL:
    ```
    https://serverless-discord-tickets.your-subdomain.workers.dev
    ```
 4. Click **Save Changes**.
-   > [!NOTE]
-   > Discord will immediately send a `PING` payload to verify the endpoint. The worker responds with `PONG` automatically using cryptographic signature verification.
+
+> [!IMPORTANT]
+> If Discord shows an error saving the URL:
+> 1. Make sure your worker is deployed (`npm run deploy`).
+> 2. Verify that `DISCORD_PUBLIC_KEY` is set correctly in Cloudflare Secrets.
+> 3. Visit your worker URL in your browser — it should return `{"status":"running", ...}` with `discordPublicKeyValidFormat: true`.
 
 ---
 
 ### 6. Register Slash Commands
 
-Register the slash commands for your Discord server.
+Register `/ticket` and `/ticket-admin` to your Discord server:
 
-1. Create a `.dev.vars` file for local scripting:
-   ```bash
-   cp .dev.vars.example .dev.vars
+1. Ensure your `.dev.vars` file has your credentials:
+   ```ini
+   DISCORD_TOKEN=your_bot_token
+   DISCORD_APPLICATION_ID=your_application_id
    ```
-2. Fill in `DISCORD_TOKEN` and `DISCORD_APPLICATION_ID` in `.dev.vars`.
-3. Register the commands to your specific server (instant):
+2. Run the registration script with your Guild (Server) ID:
    ```bash
    npm run register-command -- YOUR_GUILD_ID
    ```
-   *(To find your Guild ID: Enable Developer Mode in Discord Settings → Right-click your server icon → **Copy Server ID**)*
+   *(To get your Server ID: In Discord, enable Developer Mode under User Settings → Advanced, then right-click your server icon and select **Copy Server ID**).*
 
 ---
 
-### 7. Customize & Post Panel
+### 7. Customize & Post Support Panel
 
-1. **Customize Settings**:
+Now that the bot and commands are live:
+
+1. **Customize via Web UI**:
    - In any channel on your Discord server, type:
      ```
      /ticket-admin customize
      ```
-     *(Requires Administrator or Manage Server permissions).*
    - Click the **Open Customization Web UI** button.
-   - Configure your ticket mode, categories, staff roles, embed styles, and command aliases.
-   - Click **Save Changes**.
+   - Select your **Ticket Category**, **Archive Category**, **Staff Roles**, and customize embeds/colors.
+   - Click **Save Changes** — the bot will save to `TICKETS_KV` and automatically sync slash commands!
 
 2. **Post the Ticket Panel**:
-   - In your desired support channel (e.g., `#create-a-ticket`), run:
+   - In your dedicated support channel (e.g. `#tickets` or `#support`), type:
      ```
      /ticket-admin panel
      ```
-   - The bot will post the ticket creation embed panel with the interactive button.
+   - The bot will post the embed panel with the **Create Ticket** button.
+   - Test it by clicking **Create Ticket**!
 
 ---
 

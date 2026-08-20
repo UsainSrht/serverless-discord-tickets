@@ -7,10 +7,48 @@ export interface Env extends ConfigEnv {
   DISCORD_APPLICATION_ID: string;
   TICKETS_KV?: KVNamespace;
   TICKETS?: KVNamespace;
+  KV?: KVNamespace;
+  TICKET_KV?: KVNamespace;
+  DISCORD_TICKETS?: KVNamespace;
+  CONFIG_KV?: KVNamespace;
+  WORKER_URL?: string;
+  [key: string]: unknown;
 }
 
-export function getKV(env: Env): KVNamespace | undefined {
-  return env.TICKETS_KV ?? env.TICKETS;
+export function getKV(env: Env | Record<string, unknown> | undefined): KVNamespace | undefined {
+  if (!env || typeof env !== 'object') {
+    return undefined;
+  }
+
+  const direct =
+    (env.TICKETS_KV as KVNamespace | undefined) ??
+    (env.TICKETS as KVNamespace | undefined) ??
+    (env.KV as KVNamespace | undefined) ??
+    (env.TICKET_KV as KVNamespace | undefined) ??
+    (env.DISCORD_TICKETS as KVNamespace | undefined) ??
+    (env.CONFIG_KV as KVNamespace | undefined);
+
+  if (
+    direct &&
+    typeof direct.get === 'function' &&
+    typeof direct.put === 'function'
+  ) {
+    return direct;
+  }
+
+  for (const val of Object.values(env)) {
+    if (
+      val &&
+      typeof val === 'object' &&
+      typeof (val as KVNamespace).get === 'function' &&
+      typeof (val as KVNamespace).put === 'function' &&
+      typeof (val as KVNamespace).delete === 'function'
+    ) {
+      return val as KVNamespace;
+    }
+  }
+
+  return undefined;
 }
 
 export interface HandlerContext {

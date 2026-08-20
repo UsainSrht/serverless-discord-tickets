@@ -1612,8 +1612,12 @@ export function renderDashboardHtml(token: string): string {
       try {
         const res = await fetch('/api/session-data?token=' + encodeURIComponent(TOKEN));
         if (!res.ok) {
-          const err = await res.json();
-          document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;text-align:center;padding:20px;"><div><h1 style="font-size:32px;margin-bottom:12px;">⚠️ Session Expired or Invalid</h1><p style="color:#949ba4;margin-bottom:20px;">' + (err.error || 'This link has expired.') + '</p><p>Run <code>/ticket-admin customize</code> in Discord to generate a new 10-minute link.</p></div></div>';
+          let errMsg = 'This link has expired or is invalid.';
+          try {
+            const err = await res.json();
+            if (err && err.error) errMsg = err.error;
+          } catch {}
+          document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;text-align:center;padding:20px;"><div><h1 style="font-size:32px;margin-bottom:12px;">⚠️ Session Expired or Invalid</h1><p style="color:#949ba4;margin-bottom:20px;max-width:480px;line-height:1.5;">' + errMsg + '</p><p>Run <code>/ticket-admin customize</code> in Discord to generate a new 10-minute link.</p></div></div>';
           return;
         }
 
@@ -1787,13 +1791,16 @@ export function renderDashboardHtml(token: string): string {
 </html>`;
 }
 
-export function renderExpiredHtml(message = 'This link has expired or is invalid.'): string {
+export function renderExpiredHtml(
+  message = 'This link has expired or is invalid.',
+  title = 'Session Expired',
+): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Session Expired - Discord Tickets</title>
+  <title>${title} - Discord Tickets</title>
   <style>
     body {
       background-color: #111214;
@@ -1843,7 +1850,7 @@ export function renderExpiredHtml(message = 'This link has expired or is invalid
 <body>
   <div class="card">
     <div class="icon">⏱️</div>
-    <h1>Session Expired</h1>
+    <h1>${title}</h1>
     <p>${message}</p>
     <p>To generate a fresh 10-minute link, run <code>/ticket-admin customize</code> inside your Discord server.</p>
   </div>
