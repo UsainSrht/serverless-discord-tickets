@@ -13,6 +13,7 @@ export interface BotConfig {
     ARCHIVE_CATEGORY_ID: string;
     THREAD_CHANNEL_ID: string;
     STAFF_ROLE_IDS: string[];
+    MAX_OPEN_TICKETS_PER_USER: number;
   };
 
   commands: {
@@ -107,6 +108,8 @@ export interface ConfigEnv {
   ARCHIVE_CATEGORY_ID?: string;
   THREAD_CHANNEL_ID?: string;
   STAFF_ROLE_IDS?: string;
+  MAX_OPEN_TICKETS_PER_USER?: string | number;
+  MAX_TICKETS_PER_USER?: string | number;
   BOT_CONFIG_OVERRIDES?: string;
 }
 
@@ -122,6 +125,7 @@ export const defaultConfig: BotConfig = {
     ARCHIVE_CATEGORY_ID: '',
     THREAD_CHANNEL_ID: '',
     STAFF_ROLE_IDS: [],
+    MAX_OPEN_TICKETS_PER_USER: 1,
   },
 
   commands: {
@@ -260,14 +264,53 @@ function applyStructuralEnvVars(config: BotConfig, env: ConfigEnv): BotConfig {
       .map((id) => id.trim())
       .filter(Boolean);
   }
+  const rawMax = env.MAX_OPEN_TICKETS_PER_USER ?? env.MAX_TICKETS_PER_USER;
+  if (rawMax !== undefined) {
+    const rawStr = String(rawMax).trim();
+    if (rawStr !== '') {
+      const parsed = parseInt(rawStr, 10);
+      if (!isNaN(parsed) && parsed >= 0) {
+        next.structural.MAX_OPEN_TICKETS_PER_USER = parsed;
+      }
+    }
+  }
 
   return next;
 }
 
 function applyJsonOverrides(config: BotConfig, rawJson: string): BotConfig {
   try {
-    const overrides = JSON.parse(rawJson) as DeepPartial<BotConfig>;
-    return deepMerge(config, overrides);
+    const overrides = JSON.parse(rawJson) as DeepPartial<BotConfig> & {
+      MAX_OPEN_TICKETS_PER_USER?: number | string;
+      maxOpenTicketsPerUser?: number | string;
+      maxTicketsPerUser?: number | string;
+      structural?: {
+        MAX_OPEN_TICKETS_PER_USER?: number | string;
+        maxOpenTicketsPerUser?: number | string;
+        maxTicketsPerUser?: number | string;
+      };
+    };
+    const merged = deepMerge(config, overrides as DeepPartial<BotConfig>);
+
+    const overrideMax =
+      overrides.structural?.MAX_OPEN_TICKETS_PER_USER ??
+      overrides.structural?.maxOpenTicketsPerUser ??
+      overrides.structural?.maxTicketsPerUser ??
+      overrides.MAX_OPEN_TICKETS_PER_USER ??
+      overrides.maxOpenTicketsPerUser ??
+      overrides.maxTicketsPerUser;
+
+    if (overrideMax !== undefined) {
+      const parsed =
+        typeof overrideMax === 'number'
+          ? overrideMax
+          : parseInt(String(overrideMax).trim(), 10);
+      if (!isNaN(parsed) && parsed >= 0) {
+        merged.structural.MAX_OPEN_TICKETS_PER_USER = parsed;
+      }
+    }
+
+    return merged;
   } catch (error) {
     console.error('Invalid BOT_CONFIG_OVERRIDES JSON:', error);
     return config;

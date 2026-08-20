@@ -1,10 +1,10 @@
 import { formatTemplate, sanitizeChannelName } from '../config';
 import type { HandlerContext } from '../env';
 import {
+  countOpenTicketsForUser,
   createTicketChannel,
   createTicketThread,
   editInteractionFollowup,
-  findOpenTicketChannelForUser,
   mapDiscordErrorToMessage,
   sendChannelMessage,
 } from '../discord/api';
@@ -86,15 +86,20 @@ export async function runTicketCreation(ctx: HandlerContext): Promise<void> {
   const { config, env } = ctx;
 
   try {
-    if (config.TICKET_MODE === 'channel') {
-      const existing = await findOpenTicketChannelForUser(
+    const maxTickets = config.structural.MAX_OPEN_TICKETS_PER_USER ?? 1;
+    if (maxTickets > 0) {
+      const openCount = await countOpenTicketsForUser(
         env,
         config,
         guildId,
         user.id,
       );
-      if (existing) {
-        await followupError(ctx, config.messages.ticketAlreadyOpen);
+      if (openCount >= maxTickets) {
+        const message = formatTemplate(config.messages.ticketAlreadyOpen, {
+          max: String(maxTickets),
+          count: String(openCount),
+        });
+        await followupError(ctx, message);
         return;
       }
     }

@@ -328,11 +328,10 @@ export async function findOpenTicketChannelForUser(
       continue;
     }
 
-    const full = await getChannel(env, channel.id);
-    const ownerId = findTicketOwnerFromOverwrites(
-      full.permission_overwrites,
-      guildId,
-    );
+    const overwrites =
+      channel.permission_overwrites ??
+      (await getChannel(env, channel.id)).permission_overwrites;
+    const ownerId = findTicketOwnerFromOverwrites(overwrites, guildId);
 
     if (ownerId === userId) {
       return channel;
@@ -340,6 +339,80 @@ export async function findOpenTicketChannelForUser(
   }
 
   return undefined;
+}
+
+export async function countOpenTicketsForUser(
+  env: Env,
+  config: BotConfig,
+  guildId: string,
+  userId: string,
+): Promise<number> {
+  if (config.TICKET_MODE === 'channel') {
+    const channels = await getGuildChannels(env, guildId);
+    const ticketCategoryId = config.structural.TICKET_CATEGORY_ID;
+    let count = 0;
+
+    for (const channel of channels) {
+      if (
+        channel.parent_id !== ticketCategoryId ||
+        channel.type !== ChannelType.GuildText
+      ) {
+        continue;
+      }
+
+      const overwrites =
+        channel.permission_overwrites ??
+        (await getChannel(env, channel.id)).permission_overwrites;
+      const ownerId = findTicketOwnerFromOverwrites(overwrites, guildId);
+
+      if (ownerId === userId) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  if (config.TICKET_MODE === 'thread') {
+    if (!config.structural.THREAD_CHANNEL_ID) return 0;
+
+    try {
+      const res = await discordJson<{
+        threads: DiscordChannel[];
+        members?: Array<{ id: string; user_id: string }>;
+      }>(
+        env,
+        `/channels/${config.structural.THREAD_CHANNEL_ID}/threads/active`,
+      );
+
+      const activeThreads = (res.threads ?? []).filter(
+        (t) => !t.archived && t.parent_id === config.structural.THREAD_CHANNEL_ID,
+      );
+
+      let count = 0;
+      for (const thread of activeThreads) {
+        try {
+          const member = await discordJson<{ user_id?: string; id?: string }>(
+            env,
+            `/channels/${thread.id}/thread-members/${userId}`,
+          );
+          if (member) {
+            count++;
+          }
+        } catch (err) {
+          if (err instanceof DiscordAPIError && err.status === 404) {
+            continue;
+          }
+        }
+      }
+      return count;
+    } catch (error) {
+      console.error('Failed to get active ticket threads:', error);
+      return 0;
+    }
+  }
+
+  return 0;
 }
 
 export async function editInteractionFollowup(

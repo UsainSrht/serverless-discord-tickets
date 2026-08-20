@@ -80,6 +80,7 @@ Same page → **Environment Variables** (plain text, not secrets):
 | `ARCHIVE_CATEGORY_ID` | `123456789012345678` |
 | `THREAD_CHANNEL_ID` | `123456789012345678` |
 | `STAFF_ROLE_IDS` | `111111111111111111,222222222222222222` |
+| `MAX_OPEN_TICKETS_PER_USER` | `1` (default: 1, `0` for unlimited) |
 
 Redeploy if prompted (or push any commit).
 
