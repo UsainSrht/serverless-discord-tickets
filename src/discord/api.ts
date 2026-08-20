@@ -11,7 +11,9 @@ import {
   OverwriteType,
   type DiscordAPIErrorBody,
   type DiscordChannel,
+  type DiscordGuild,
   type DiscordMessagePayload,
+  type DiscordRole,
 } from '../types';
 
 const MAX_RETRIES = 3;
@@ -441,4 +443,18 @@ export function mapDiscordErrorToMessage(
     return `${config.messages.genericError} (${error.message})`;
   }
   return config.messages.genericError;
+}
+
+export async function getGuildRoles(
+  env: Env,
+  guildId: string,
+): Promise<DiscordRole[]> {
+  return discordJson<DiscordRole[]>(env, `/guilds/${guildId}/roles`);
+}
+
+export async function getGuildDetails(
+  env: Env,
+  guildId: string,
+): Promise<DiscordGuild> {
+  return discordJson<DiscordGuild>(env, `/guilds/${guildId}`);
 }

@@ -1,13 +1,15 @@
-import { loadConfig } from './config';
+import { loadGuildConfig } from './config';
 import type { Env } from './env';
 import { handleCloseTicketButton, runTicketClose } from './handlers/close-button';
 import { handleDeleteTicketButton, runTicketDelete } from './handlers/delete-button';
 import { handleCreateTicketButton } from './handlers/create-button';
 import { handleCreateTicketModal, runTicketCreation } from './handlers/create-modal';
-import { handleTicketCommand } from './handlers/command';
+import { handlePanelCommand, handleTicketCommand } from './handlers/command';
+import { handleCustomizeCommand } from './handlers/customize-command';
 import { messageResponse, pongResponse } from './responses';
 import { InteractionType, type APIInteraction } from './types';
 import { normalizePublicKey, verifyDiscordRequest } from './verify';
+import { handleWebRequest, isWebRequest } from './web/router';
 
 function healthResponse(env: Env): Response {
   const publicKey = normalizePublicKey(env.DISCORD_PUBLIC_KEY);
@@ -38,6 +40,13 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Handle Web UI and API endpoints
+    if (isWebRequest(url)) {
+      return handleWebRequest(request, env);
+    }
+
     if (request.method === 'GET') {
       return healthResponse(env);
     }
@@ -67,16 +76,29 @@ export default {
       return pongResponse();
     }
 
-    const config = loadConfig(env);
-    const handlerCtx = { env, config, interaction };
+    const config = await loadGuildConfig(env, interaction.guild_id);
+    const handlerCtx = { env, config, interaction, request };
 
     try {
       switch (interaction.type) {
 
         case InteractionType.ApplicationCommand: {
           const commandName = interaction.data?.name;
-          if (commandName === config.commands.ticket.name) {
+          if (
+            commandName === config.commands.ticket?.name ||
+            commandName === 'ticket' ||
+            commandName === config.commands.ticketAdmin?.name ||
+            commandName === 'ticket-admin' ||
+            commandName === 'ticketadmin' ||
+            commandName === 'tickets'
+          ) {
             return handleTicketCommand(handlerCtx);
+          }
+          if (commandName === 'customize') {
+            return handleCustomizeCommand(handlerCtx);
+          }
+          if (commandName === 'panel' || commandName === 'ticket-panel') {
+            return handlePanelCommand(handlerCtx);
           }
           return messageResponse('Unknown command.', true);
         }

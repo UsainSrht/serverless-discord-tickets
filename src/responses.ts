@@ -49,3 +49,13 @@ export function publicMessageResponse(payload: DiscordMessagePayload): Response 
     data: payload as Record<string, unknown>,
   });
 }
+
+export function ephemeralPayloadResponse(payload: DiscordMessagePayload): Response {
+  return jsonResponse({
+    type: InteractionResponseType.ChannelMessageWithSource,
+    data: {
+      ...(payload as Record<string, unknown>),
+      flags: 64,
+    },
+  });
+}

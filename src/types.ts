@@ -5,15 +5,36 @@ export interface DiscordUser {
   username: string;
   global_name?: string | null;
   discriminator?: string;
+  avatar?: string | null;
 }
 
 export interface DiscordMember {
   user?: DiscordUser;
   roles: string[];
+  permissions?: string;
+}
+
+export interface DiscordRole {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+  permissions: string;
+  managed?: boolean;
 }
 
 export interface DiscordGuild {
   id: string;
+  name?: string;
+  icon?: string | null;
+  description?: string | null;
+}
+
+export interface ApplicationCommandInteractionDataOption {
+  name: string;
+  type: number;
+  value?: string | number | boolean;
+  options?: ApplicationCommandInteractionDataOption[];
 }
 
 export interface APIInteraction {
@@ -37,6 +58,7 @@ export interface InteractionData {
   name?: string;
   custom_id?: string;
   component_type?: number;
+  options?: ApplicationCommandInteractionDataOption[];
   components?: ModalComponentRow[];
 }
 
@@ -63,6 +85,7 @@ export interface DiscordChannel {
   name: string;
   type: number;
   parent_id?: string;
+  position?: number;
   archived?: boolean;
   locked?: boolean;
   permission_overwrites?: PermissionOverwrite[];
@@ -83,6 +106,8 @@ export interface EmbedPayload {
   title?: string;
   description?: string;
   color?: number;
+  footer?: { text: string; icon_url?: string };
+  timestamp?: string;
 }
 
 export interface MessageComponent {
@@ -90,6 +115,8 @@ export interface MessageComponent {
   custom_id?: string;
   label?: string;
   style?: number;
+  url?: string;
+  disabled?: boolean;
   emoji?: { name: string; id?: string };
   components?: MessageComponent[];
 }
@@ -98,6 +125,14 @@ export interface DiscordMessagePayload {
   content?: string;
   embeds?: EmbedPayload[];
   components?: Array<{ type: number; components: MessageComponent[] }>;
+}
+
+export interface ConfigSessionData {
+  guildId: string;
+  userId: string;
+  guildName?: string;
+  createdAt: number;
+  expiresAt: number;
 }
 
 export enum InteractionType {
@@ -122,6 +157,14 @@ export enum ComponentType {
   TextInput = 4,
 }
 
+export enum ButtonStyle {
+  Primary = 1,
+  Secondary = 2,
+  Success = 3,
+  Danger = 4,
+  Link = 5,
+}
+
 export enum TextInputStyle {
   Short = 1,
   Paragraph = 2,
@@ -129,6 +172,8 @@ export enum TextInputStyle {
 
 export enum ChannelType {
   GuildText = 0,
+  GuildCategory = 4,
+  PublicThread = 11,
   PrivateThread = 12,
 }
 

@@ -2,20 +2,33 @@
 
 A fully customizable, open-source Discord ticket bot for **Cloudflare Workers**. Uses Discord's HTTP Interactions API (no WebSocket gateway).
 
-**Your private UI customizations never go in Git** — they live in Cloudflare as `BOT_CONFIG_OVERRIDES`.
+**Customize everything via a Web UI dashboard directly from Discord** using `/ticket-admin customize`.
 
 ## How configuration works
 
 | Layer | Where | In GitHub? |
 |-------|--------|------------|
 | Code defaults | `src/config.ts` | Yes (generic only) |
-| Server IDs & mode | Cloudflare **Variables** | No |
+| Web UI customizations | Cloudflare **KV** (`TICKETS_KV`) | No (per-server) |
 | Bot credentials | Cloudflare **Secrets** | No |
-| Your embeds, buttons, messages | `BOT_CONFIG_OVERRIDES` **Secret** | No |
+| Fallback / Global overrides | `BOT_CONFIG_OVERRIDES` **Secret** | No |
 
 ---
 
-## Step-by-step deploy (Option 2)
+## Web UI Customization Dashboard (`/ticket-admin customize`)
+
+1. In your Discord server, run `/ticket-admin customize` (Admin only).
+2. The bot generates an ephemeral **10-minute secure link**.
+3. Open the link to customize:
+   - **Ticket Mode & Categories**: Dropdowns with your server's actual Discord categories and channels.
+   - **Staff Roles**: Clickable role pills populated from your Discord server.
+   - **Embeds & Buttons**: Live interactive Discord embed preview with real-time color pickers and emoji pickers.
+   - **Feedback Messages & Naming**: Custom channel format (`ticket-{username}`).
+4. Click **Save Changes** — settings take effect immediately with zero redeploy needed!
+
+---
+
+## Step-by-step deploy
 
 ### Step 1 — Discord Developer Portal
 
@@ -27,39 +40,24 @@ A fully customizable, open-source Discord ticket bot for **Cloudflare Workers**.
    - Manage Threads (if using thread mode)
    - Send Messages · Embed Links · Read Message History
 
-### Step 2 — Prepare your Discord server
+### Step 2 — Create Cloudflare KV Namespace
 
-Create and copy IDs (Developer Mode → right-click → Copy ID):
+In Cloudflare Dashboard → **Workers & Pages** → **KV** → **Create Namespace**:
+- Name: `TICKETS_KV`
+- Bind it in `wrangler.toml`:
+  ```toml
+  [[kv_namespaces]]
+  binding = "TICKETS_KV"
+  id = "YOUR_KV_NAMESPACE_ID"
+  ```
 
-- Ticket category (channel mode)
-- Archive category (channel mode)
-- Thread parent channel (thread mode)
-- Staff role(s)
+### Step 3 — Push to GitHub & Connect to Cloudflare Workers
 
-### Step 3 — Push to GitHub
+1. Push your repository to GitHub.
+2. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Connect to Git**.
+3. Set Deploy command: `npx wrangler deploy --keep-vars`.
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USER/serverless-discord-tickets.git
-git push -u origin main
-```
-
-The public repo only contains generic defaults — no tokens, no your UI.
-
-### Step 4 — Connect Cloudflare Workers to GitHub
-
-1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create**.
-2. Choose **Connect to Git** → select your repo.
-3. Build settings:
-   - **Build command:** (leave empty — Wrangler builds automatically)
-   - **Deploy command:** `npx wrangler deploy --keep-vars`
-4. Finish setup. Cloudflare deploys on every push to `main`.
-
-> **Important:** Git deploys run Wrangler, which by default **removes dashboard environment variables** that are not in `wrangler.toml`. This repo sets `keep_vars = true` and uses `--keep-vars` so your Cloudflare secrets/variables survive each commit. Bot credentials must be added as **Secrets** (encrypted), not plain Environment Variables.
-
-### Step 5 — Set Cloudflare Secrets
+### Step 4 — Set Cloudflare Secrets
 
 In your Worker → **Settings** → **Variables and Secrets** → **Secrets**:
 
@@ -69,69 +67,23 @@ In your Worker → **Settings** → **Variables and Secrets** → **Secrets**:
 | `DISCORD_PUBLIC_KEY` | Public key from Step 1 |
 | `DISCORD_APPLICATION_ID` | Application ID from Step 1 |
 
-### Step 6 — Set Cloudflare Variables
-
-Same page → **Environment Variables** (plain text, not secrets):
-
-| Variable | Example |
-|----------|---------|
-| `TICKET_MODE` | `channel` or `thread` |
-| `TICKET_CATEGORY_ID` | `123456789012345678` |
-| `ARCHIVE_CATEGORY_ID` | `123456789012345678` |
-| `THREAD_CHANNEL_ID` | `123456789012345678` |
-| `STAFF_ROLE_IDS` | `111111111111111111,222222222222222222` |
-| `MAX_OPEN_TICKETS_PER_USER` | `1` (default: 1, `0` for unlimited) |
-
-Redeploy if prompted (or push any commit).
-
-### Step 7 — Add your private UI customization
-
-On your machine (not in Git):
-
-```bash
-cp config.overrides.example.json config.overrides.json
-# Edit config.overrides.json with your embeds, buttons, messages, colors
-
-npm run encode-config -- config.overrides.json
-```
-
-Copy the output and add it as a **Secret** named `BOT_CONFIG_OVERRIDES` in Cloudflare.
-
-Only include fields you want to override — everything else uses code defaults.
-
-**Embed colors** are decimal integers (`0x5865f2` → `5793266`).
-
-Redeploy after adding the secret.
-
-### Step 8 — Set the Interactions Endpoint
+### Step 5 — Set the Interactions Endpoint
 
 1. Copy your Worker URL (e.g. `https://serverless-discord-tickets.your-name.workers.dev`).
 2. Discord Developer Portal → your app → **General Information** → **Interactions Endpoint URL** → paste the URL → **Save Changes**.
-3. Discord sends a PING; the worker responds automatically. You should see a green checkmark.
 
-### Step 9 — Register the slash command
+### Step 6 — Register slash commands
 
-Locally, with the same env values:
+Locally, with `.dev.vars` configured:
 
 ```bash
-cp .dev.vars.example .dev.vars
-# Fill in .dev.vars with your secrets and IDs
-
-# Load .dev.vars in PowerShell:
-Get-Content .dev.vars | ForEach-Object {
-  if ($_ -match '^\s*([^#=]+)=(.*)$') { Set-Item -Path "env:$($matches[1].Trim())" -Value $matches[2].Trim() }
-}
-
 npm run register-command -- YOUR_GUILD_ID
 ```
 
-Guild commands appear instantly. Omit the guild ID for a global command (up to ~1 hour to propagate).
-
-### Step 10 — Test
-
-1. Run `/ticket` in Discord (admin only) → ticket panel appears with **your** embed text.
-2. Click **Create Ticket** → modal → submit → channel/thread is created.
-3. Click **Close Ticket** → ticket is archived.
+This registers the slash commands:
+- `/ticket` — Opens the ticket creation modal directly (accessible by all server members).
+- `/ticket-admin panel` — Posts the ticket creation panel and button in the channel (Admin only).
+- `/ticket-admin customize` — Generates a 10-minute Web UI customization link (Admin only).
 
 ---
 
@@ -139,24 +91,11 @@ Guild commands appear instantly. Omit the guild ID for a global command (up to ~
 
 ```bash
 cp .dev.vars.example .dev.vars
-# Fill in values + optional BOT_CONFIG_OVERRIDES line from encode-config
+# Fill in values
 
 npm install
 npm run dev
 ```
-
-Use [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) to tunnel localhost and set that URL as the Interactions Endpoint while testing.
-
----
-
-## Updating your customization later
-
-1. Edit `config.overrides.json` locally.
-2. Run `npm run encode-config -- config.overrides.json`.
-3. Update the `BOT_CONFIG_OVERRIDES` secret in Cloudflare.
-4. Redeploy (or wait for next Git push). With `keep_vars` enabled, dashboard secrets and variables persist across deploys.
-
-No Git commit needed. Your branding stays private.
 
 ---
 
@@ -164,16 +103,15 @@ No Git commit needed. Your branding stays private.
 
 ```
 src/
-  config.ts              # Types, defaults, loadConfig()
-  index.ts                 # Worker entry point
-  handlers/                # Interaction handlers
-  discord/                 # REST API + component builders
-config.overrides.example.json   # Example UI overrides (safe to commit)
-config.overrides.json           # YOUR overrides (gitignored)
-.dev.vars.example               # Local env template
+  config.ts              # Types, defaults, loadGuildConfig()
+  index.ts               # Worker entry point & routing
+  handlers/              # Interaction handlers (/ticket, /ticket-admin, buttons, modals)
+  web/
+    html.ts              # Web UI Dashboard single-page app & live embed preview
+    router.ts            # Web UI & REST API router
+  discord/               # REST API client + component builders
 scripts/
-  register-command.ts
-  encode-config-overrides.ts
+  register-command.ts    # Register /ticket and /ticket-admin slash commands
 ```
 
 ## License

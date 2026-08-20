@@ -21,6 +21,10 @@ export interface BotConfig {
       name: string;
       description: string;
     };
+    ticketAdmin?: {
+      name: string;
+      description: string;
+    };
   };
 
   customIds: {
@@ -111,9 +115,10 @@ export interface ConfigEnv {
   MAX_OPEN_TICKETS_PER_USER?: string | number;
   MAX_TICKETS_PER_USER?: string | number;
   BOT_CONFIG_OVERRIDES?: string;
+  WORKER_URL?: string;
 }
 
-type DeepPartial<T> = {
+export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
@@ -131,7 +136,11 @@ export const defaultConfig: BotConfig = {
   commands: {
     ticket: {
       name: 'ticket',
-      description: 'Post the ticket creation panel (admin only).',
+      description: 'Open a support ticket',
+    },
+    ticketAdmin: {
+      name: 'ticket-admin',
+      description: 'Manage support tickets and customize bot settings (Admin only)',
     },
   },
 
@@ -219,11 +228,11 @@ export const defaultConfig: BotConfig = {
   },
 };
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function deepMerge<T extends object>(base: T, override: DeepPartial<T>): T {
+export function deepMerge<T extends object>(base: T, override: DeepPartial<T>): T {
   const result = structuredClone(base);
 
   for (const key of Object.keys(override) as (keyof T)[]) {
@@ -244,7 +253,7 @@ function deepMerge<T extends object>(base: T, override: DeepPartial<T>): T {
   return result;
 }
 
-function applyStructuralEnvVars(config: BotConfig, env: ConfigEnv): BotConfig {
+export function applyStructuralEnvVars(config: BotConfig, env: ConfigEnv): BotConfig {
   const next = structuredClone(config);
 
   if (env.TICKET_MODE === 'channel' || env.TICKET_MODE === 'thread') {
@@ -278,7 +287,7 @@ function applyStructuralEnvVars(config: BotConfig, env: ConfigEnv): BotConfig {
   return next;
 }
 
-function applyJsonOverrides(config: BotConfig, rawJson: string): BotConfig {
+export function applyJsonOverrides(config: BotConfig, rawJson: string): BotConfig {
   try {
     const overrides = JSON.parse(rawJson) as DeepPartial<BotConfig> & {
       MAX_OPEN_TICKETS_PER_USER?: number | string;
@@ -327,6 +336,27 @@ export function loadConfig(env: ConfigEnv): BotConfig {
   }
 
   return config;
+}
+
+/** Build effective config for a specific guild, incorporating KV overrides if present. */
+export async function loadGuildConfig(
+  env: ConfigEnv & { TICKETS_KV?: KVNamespace; TICKETS?: KVNamespace },
+  guildId?: string,
+): Promise<BotConfig> {
+  const baseConfig = loadConfig(env);
+  if (!guildId) return baseConfig;
+
+  const kv = env.TICKETS_KV ?? env.TICKETS;
+  if (!kv) return baseConfig;
+
+  try {
+    const rawGuildConfig = await kv.get(`guild_config:${guildId}`);
+    if (!rawGuildConfig?.trim()) return baseConfig;
+    return applyJsonOverrides(baseConfig, rawGuildConfig);
+  } catch (error) {
+    console.error(`Failed to load guild config from KV for guild ${guildId}:`, error);
+    return baseConfig;
+  }
 }
 
 /** Replace `{key}` placeholders in a template string. */

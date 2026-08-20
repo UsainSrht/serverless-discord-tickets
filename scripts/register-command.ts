@@ -39,44 +39,67 @@ if (!token || !applicationId) {
   process.exit(1);
 }
 
-const commandBody = {
-  name: config.commands.ticket.name,
-  description: config.commands.ticket.description,
-  type: 1,
-  default_member_permissions: '8',
-  dm_permission: false,
-};
+const commands = [
+  {
+    name: config.commands.ticket?.name || 'ticket',
+    description: config.commands.ticket?.description || 'Open a support ticket',
+    type: 1,
+    dm_permission: false,
+  },
+  {
+    name: config.commands.ticketAdmin?.name || 'ticket-admin',
+    description:
+      config.commands.ticketAdmin?.description ||
+      'Manage support tickets and customize bot settings (Admin only)',
+    type: 1,
+    default_member_permissions: '8',
+    dm_permission: false,
+    options: [
+      {
+        name: 'panel',
+        description: 'Post the ticket creation panel in this channel',
+        type: 1,
+      },
+      {
+        name: 'customize',
+        description: 'Generate a 10-minute link to customize bot settings in the Web UI',
+        type: 1,
+      },
+    ],
+  },
+];
 
-async function registerCommand(): Promise<void> {
+async function registerCommands(): Promise<void> {
   const url = guildId
     ? `${DISCORD_API}/applications/${applicationId}/guilds/${guildId}/commands`
     : `${DISCORD_API}/applications/${applicationId}/commands`;
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       Authorization: `Bot ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(commandBody),
+    body: JSON.stringify(commands),
   });
 
   const data = await response.json();
 
   if (!response.ok) {
-    console.error('Failed to register command:', data);
+    console.error('Failed to register commands:', data);
     process.exit(1);
   }
 
   console.log(
     guildId
-      ? `Guild command registered in ${guildId}:`
-      : 'Global command registered (may take up to 1 hour):',
+      ? `Guild commands registered in ${guildId}:`
+      : 'Global commands registered (may take up to 1 hour):',
   );
   console.log(JSON.stringify(data, null, 2));
 }
 
-registerCommand().catch((error) => {
+registerCommands().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
