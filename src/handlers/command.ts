@@ -9,6 +9,7 @@ import {
   messageResponse,
 } from '../responses';
 import { handleCustomizeCommand, isMemberAdmin } from './customize-command';
+import { handlePruneCommand, runTicketPrune } from './prune-command';
 
 export async function handlePanelCommand(
   ctx: HandlerContext,
@@ -42,6 +43,18 @@ export async function handleTicketCommand(
 
   if (subcommand === 'panel') {
     return handlePanelCommand(ctx);
+  }
+
+  if (subcommand === 'prune') {
+    const { response, proceed, options } = await handlePruneCommand(ctx);
+    if (proceed) {
+      if (ctx.executionCtx) {
+        ctx.executionCtx.waitUntil(runTicketPrune(ctx, options));
+      } else {
+        void runTicketPrune(ctx, options);
+      }
+    }
+    return response;
   }
 
   // /ticket (without subcommands) opens the ticket creation modal to the user

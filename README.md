@@ -276,6 +276,10 @@ The Web UI dashboard allows administrators to configure the ticket bot visually 
 - **Subcommands**:
   - `/ticket-admin panel` — Posts the support panel embed with the "Create Ticket" button in the current channel.
   - `/ticket-admin customize` — Generates a 10-minute secure link to the Web UI dashboard.
+  - `/ticket-admin prune [limit] [days] [dry_run]` — Bulk prunes (deletes) archived tickets from the server.
+    - `limit` *(optional, default 50, max 100)*: Maximum number of archived tickets to delete in one run.
+    - `days` *(optional, default 0)*: Minimum age in days (only prunes tickets older than N days).
+    - `dry_run` *(optional, default false)*: Preview matching tickets without deleting anything.
 - **Permissions**: Restricted to server members with **Administrator** or **Manage Server** permissions.
 
 ---
@@ -296,9 +300,13 @@ The Web UI dashboard allows administrators to configure the ticket bot visually 
    - The ticket creator or any staff member can click the **Close Ticket** button.
    - In **Channel Mode**: The channel is moved to the **Archive Category**, and the ticket creator's view permission is revoked.
    - In **Thread Mode**: The thread is archived and locked.
-2. **Deleting**:
+2. **Deleting Individual Tickets**:
    - A **Delete Ticket** button appears in the closed ticket embed.
    - Only users with a **Staff Role** can click Delete to permanently delete the archived channel.
+3. **Bulk Pruning (Admin)**:
+   - Server administrators can run `/ticket-admin prune` to bulk delete archived tickets.
+   - Works in both **Channel Mode** (pruning channels inside `ARCHIVE_CATEGORY_ID`) and **Thread Mode** (pruning archived threads in `THREAD_CHANNEL_ID`).
+   - Supports safe preview via `dry_run: true` and age filtering via `days: <number>`.
 
 ---
 

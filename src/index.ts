@@ -104,7 +104,7 @@ export default {
     }
 
     const config = await loadGuildConfig(env, interaction.guild_id);
-    const handlerCtx = { env, config, interaction, request };
+    const handlerCtx = { env, config, interaction, request, executionCtx: ctx };
 
     try {
       switch (interaction.type) {
@@ -122,6 +122,9 @@ export default {
           }
           if (commandName === 'panel' || commandName === 'ticket-panel') {
             return handlePanelCommand(handlerCtx);
+          }
+          if (commandName === 'prune' || commandName === 'prune-tickets') {
+            return handleTicketCommand(handlerCtx);
           }
           return messageResponse('Unknown command.', true);
         }

@@ -419,6 +419,28 @@ export async function countOpenTicketsForUser(
   return 0;
 }
 
+export function getSnowflakeTimestamp(snowflakeId: string): number {
+  return Number((BigInt(snowflakeId) >> 22n) + 1420070400000n);
+}
+
+export async function getArchivedThreads(
+  env: Env,
+  channelId: string,
+  type: 'private' | 'public' = 'private',
+): Promise<DiscordChannel[]> {
+  try {
+    const res = await discordJson<{
+      threads: DiscordChannel[];
+      has_more?: boolean;
+    }>(env, `/channels/${channelId}/threads/archived/${type}`);
+
+    return res.threads ?? [];
+  } catch (error) {
+    console.error(`Failed to fetch archived ${type} threads for channel ${channelId}:`, error);
+    return [];
+  }
+}
+
 export async function editInteractionFollowup(
   env: Env,
   applicationId: string,
@@ -533,6 +555,34 @@ export function buildApplicationCommands(
       description:
         'Generate a 10-minute link to customize bot settings in the Web UI',
       type: 1,
+    },
+    {
+      name: 'prune',
+      description: 'Prune (delete) archived tickets from the server',
+      type: 1,
+      options: [
+        {
+          name: 'limit',
+          description:
+            'Maximum number of archived tickets to delete (default: 50, max: 100)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'days',
+          description:
+            'Only delete tickets older than this many days (e.g. 7 or 30)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'dry_run',
+          description:
+            'Preview tickets that would be deleted without deleting them (default: false)',
+          type: 5,
+          required: false,
+        },
+      ],
     },
   ];
 

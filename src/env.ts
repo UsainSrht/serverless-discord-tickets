@@ -56,6 +56,7 @@ export interface HandlerContext {
   config: BotConfig;
   interaction: APIInteraction;
   request?: Request;
+  executionCtx?: ExecutionContext;
 }
 
 export type InteractionHandler = (
