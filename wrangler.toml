@@ -7,10 +7,9 @@ compatibility_date = "2024-12-01"
 keep_vars = true
 
 # KV namespace for Web UI configuration & 10-minute sessions (and optional ticket metadata).
-# Create with: npx wrangler kv:namespace create TICKETS_KV
-# [[kv_namespaces]]
-# binding = "TICKETS_KV"
-# id = "YOUR_KV_NAMESPACE_ID"
+[[kv_namespaces]]
+binding = "TICKETS_KV"
+id = "5e6ac7af6a2a466f9ffa458d3ad5bafd"
 
 # [[d1_databases]]
 # binding = "DB"
