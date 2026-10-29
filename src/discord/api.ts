@@ -272,10 +272,14 @@ export async function archiveTicketChannel(
     creatorOverwrite.deny = PermissionFlags.VIEW_CHANNEL.toString();
   }
 
+  const archiveCategoryId = config.structural.ARCHIVE_CATEGORY_ID?.trim();
+
   await discordJson(env, `/channels/${channelId}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      parent_id: config.structural.ARCHIVE_CATEGORY_ID,
+      // An empty parent_id is rejected by Discord (Invalid Form Body), so only
+      // move the channel when an archive category is actually configured.
+      ...(archiveCategoryId ? { parent_id: archiveCategoryId } : {}),
       permission_overwrites: overwrites,
     }),
   });
