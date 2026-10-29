@@ -98,6 +98,7 @@ export interface BotConfig {
     closeNotAllowed: string;
     deleteNotAllowed: string;
     missingPermissions: string;
+    archiveCategoryFull: string;
     rateLimited: string;
     genericError: string;
     deferredWorking: string;
@@ -227,6 +228,8 @@ export const defaultConfig: BotConfig = {
     deleteNotAllowed: 'Only staff can delete archived tickets.',
     missingPermissions:
       'I lack permission to create or modify channels. Please check my role hierarchy and permissions.',
+    archiveCategoryFull:
+      'The archive category is full (Discord allows 50 channels per category). Delete old archived tickets with the prune command or use another archive category.',
     rateLimited: 'Discord is rate limiting requests. Please try again in a moment.',
     genericError: 'Something went wrong while processing your request.',
     deferredWorking: 'Working on your request…',

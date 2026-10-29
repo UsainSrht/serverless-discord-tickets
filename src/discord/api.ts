@@ -26,6 +26,7 @@ export class DiscordAPIError extends Error {
     public readonly status: number,
     public readonly code?: number,
     public readonly retryAfter?: number,
+    public readonly details: DiscordErrorDetail[] = [],
   ) {
     super(message);
     this.name = 'DiscordAPIError';
@@ -38,6 +39,36 @@ export class DiscordAPIError extends Error {
   get isRateLimited(): boolean {
     return this.status === 429;
   }
+
+  get isCategoryFull(): boolean {
+    return this.details.some((d) => d.code === 'CHANNEL_PARENT_MAX_CHANNELS');
+  }
+}
+
+interface DiscordErrorDetail {
+  path: string;
+  code: string;
+  message: string;
+}
+
+// Discord nests validation failures as { field: { _errors: [{ code, message }] } }.
+function flattenErrorDetails(
+  node: unknown,
+  path = '',
+  out: DiscordErrorDetail[] = [],
+): DiscordErrorDetail[] {
+  if (typeof node !== 'object' || node === null) return out;
+
+  for (const [key, value] of Object.entries(node)) {
+    if (key === '_errors' && Array.isArray(value)) {
+      for (const e of value as Array<{ code?: string; message?: string }>) {
+        out.push({ path, code: e.code ?? '', message: e.message ?? '' });
+      }
+    } else {
+      flattenErrorDetails(value, path ? `${path}.${key}` : key, out);
+    }
+  }
+  return out;
 }
 
 async function parseErrorResponse(response: Response): Promise<DiscordAPIError> {
@@ -53,11 +84,18 @@ async function parseErrorResponse(response: Response): Promise<DiscordAPIError> 
     body.retry_after ??
     (retryHeader ? parseFloat(retryHeader) : undefined);
 
+  const details = flattenErrorDetails(body.errors);
+  const detailText = details
+    .map((d) => `${d.path}: ${d.message}`)
+    .join('; ');
+  const baseMessage = body.message ?? `Discord API error (${response.status})`;
+
   return new DiscordAPIError(
-    body.message ?? `Discord API error (${response.status})`,
+    detailText ? `${baseMessage} - ${detailText}` : baseMessage,
     response.status,
     body.code,
     retryAfter,
+    details,
   );
 }
 
@@ -272,14 +310,10 @@ export async function archiveTicketChannel(
     creatorOverwrite.deny = PermissionFlags.VIEW_CHANNEL.toString();
   }
 
-  const archiveCategoryId = config.structural.ARCHIVE_CATEGORY_ID?.trim();
-
   await discordJson(env, `/channels/${channelId}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      // An empty parent_id is rejected by Discord (Invalid Form Body), so only
-      // move the channel when an archive category is actually configured.
-      ...(archiveCategoryId ? { parent_id: archiveCategoryId } : {}),
+      parent_id: config.structural.ARCHIVE_CATEGORY_ID,
       permission_overwrites: overwrites,
     }),
   });
@@ -468,6 +502,7 @@ export function mapDiscordErrorToMessage(
   if (error instanceof DiscordAPIError) {
     if (error.isRateLimited) return config.messages.rateLimited;
     if (error.isMissingPermissions) return config.messages.missingPermissions;
+    if (error.isCategoryFull) return config.messages.archiveCategoryFull;
     return `${config.messages.genericError} (${error.message})`;
   }
   return config.messages.genericError;

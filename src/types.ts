@@ -117,6 +117,7 @@ export interface DiscordAPIErrorBody {
   message?: string;
   code?: number;
   retry_after?: number;
+  errors?: unknown;
 }
 
 export interface InteractionResponse {
